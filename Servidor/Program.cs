@@ -1,9 +1,8 @@
 
-using Servidor.KubeOrchestratorPlatform.Services;
-using Servidor.KubeOrchestratorPlatform.Models;
 using Servidor.KubeOrchestratorPlatform.Factories;
-using Servidor.KubeOrchestratorPlatform.Services.Auth;
-using Servidor.KubeOrchestratorPlatform.Repositories;
+using Servidor.KubeOrchestratorPlatform.Services.Connection;
+using Servidor.KubeOrchestratorPlatform.Services.Parser;
+using Servidor.KubeOrchestratorPlatform.Services.Store;
 
 namespace Servidor
 {
@@ -20,6 +19,7 @@ namespace Servidor
             builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
             builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
             builder.Services.AddSingleton<IUserClusterStore, InMemoryUserClusterStore>();
+            builder.Services.AddSingleton<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
 
 
             builder.Services.AddEndpointsApiExplorer();

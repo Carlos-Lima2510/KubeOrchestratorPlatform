@@ -1,9 +1,9 @@
 ﻿using k8s;
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models;
-using Servidor.KubeOrchestratorPlatform.Services.Auth;
-using Servidor.KubeOrchestratorPlatform.Factories;
-using Servidor.KubeOrchestratorPlatform.Repositories;
+using Servidor.KubeOrchestratorPlatform.Services.Parser;
+using Servidor.KubeOrchestratorPlatform.Services.Connection;
+using Servidor.KubeOrchestratorPlatform.Services.Store;
 
 namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
@@ -12,17 +12,17 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
     public class KubeTestController : ControllerBase
     {
         private readonly IKubeConfigParser _parser;
-        private readonly IKubernetesClientFactory _factory;
-        private readonly IUserClusterStore _store;
+        private readonly IUserClusterStore store;
+        private readonly IKubernetesUserClientConnection clientConnection;
 
         public KubeTestController(
             IKubeConfigParser parser,
-            IKubernetesClientFactory factory,
-            IUserClusterStore store)
+            IUserClusterStore store,
+            IKubernetesUserClientConnection clientConnection)
         {
             _parser = parser;
-            _factory = factory;
-            _store = store;
+            this.store = store;
+            this.clientConnection = clientConnection;
         }
 
         // Endpoint para subir kubeconfig
@@ -37,6 +37,8 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
             var parsed = _parser.Parse(yaml);
 
+            Console.WriteLine("Valores parseados: " + parsed.AuthType);
+
             var creds = new UserClusterCredentials
             {
                 Server = parsed.Server,
@@ -47,7 +49,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
                 AuthType = parsed.AuthType
             };
 
-            _store.Save(userId, creds);
+            store.Save(userId, creds);
 
             return Ok(new { message = "Kubeconfig cargado correctamente" });
         }
@@ -55,20 +57,10 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         [HttpGet("pods/{userId}")]
         public async Task<IActionResult> GetPods(string userId, string ns = "default")
         {
-            if (!_store.Exists(userId))
+            if (!store.Exists(userId))
                 return NotFound($"No se encontraron credenciales para el usuario {userId}");
 
-            var creds = _store.Get(userId);
-
-            var client = _factory.CreateClient(new ParsedKubeConfig
-            {
-                Server = creds.Server,
-                CertificateAuthorityData = creds.CertificateAuthorityData,
-                Token = creds.Token,
-                ClientCertificateData = creds.ClientCertificateData,
-                ClientKeyData = creds.ClientKeyData,
-                AuthType = creds.AuthType
-            });
+            var client = clientConnection.GetClient(userId);
 
             try
             {
@@ -85,20 +77,10 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         [HttpGet("namespaces/{userId}")]
         public async Task<IActionResult> GetNamespaces(string userId)
         {
-            if (!_store.Exists(userId))
+            if (!store.Exists(userId))
                 return NotFound($"No se encontraron credenciales para el usuario {userId}");
 
-            var creds = _store.Get(userId);
-
-            var client = _factory.CreateClient(new ParsedKubeConfig
-            {
-                Server = creds.Server,
-                CertificateAuthorityData = creds.CertificateAuthorityData,
-                Token = creds.Token,
-                ClientCertificateData = creds.ClientCertificateData,
-                ClientKeyData = creds.ClientKeyData,
-                AuthType = creds.AuthType
-            });
+            var client = clientConnection.GetClient(userId);
 
             try
             {
@@ -115,20 +97,10 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         [HttpGet("services/{ns}/{userId}")]
         public async Task<IActionResult> GetServices(string ns, string userId)
         {
-            if (!_store.Exists(userId))
+            if (!store.Exists(userId))
                 return NotFound($"No se encontraron credenciales para el usuario {userId}");
 
-            var creds = _store.Get(userId);
-
-            var client = _factory.CreateClient(new ParsedKubeConfig
-            {
-                Server = creds.Server,
-                CertificateAuthorityData = creds.CertificateAuthorityData,
-                Token = creds.Token,
-                ClientCertificateData = creds.ClientCertificateData,
-                ClientKeyData = creds.ClientKeyData,
-                AuthType = creds.AuthType
-            });
+            var client = clientConnection.GetClient(userId);
 
             try
             {
