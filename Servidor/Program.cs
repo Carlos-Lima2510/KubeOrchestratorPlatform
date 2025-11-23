@@ -1,8 +1,11 @@
 using StackExchange.Redis;
+using Serilog;
 using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
+using Servidor.KubeOrchestratorPlatform.Services.Audit;
 using Servidor.KubeOrchestratorPlatform.Services.Parser;
 using Servidor.KubeOrchestratorPlatform.Services.Store;
+using Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators;
 
 namespace Servidor
 {
@@ -10,46 +13,61 @@ namespace Servidor
     {
         public static void Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .Enrich.FromLogContext()
+                .WriteTo.Console()
+                .WriteTo.File("Logs/orchestrator.log", rollingInterval: RollingInterval.Day)
+                .CreateLogger();
 
-            // Configuración de logging
-            builder.Logging.ClearProviders();
-            builder.Logging.AddConsole();
-            builder.Logging.SetMinimumLevel(LogLevel.Information);
-
-            builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+            try
             {
-                var redisConn = builder.Configuration.GetConnectionString("Redis")
-                    ?? throw new Exception("No se encontró la cadena de conexión de Redis.");
+                Log.Information("Iniciando la aplicación...");
 
-                return ConnectionMultiplexer.Connect(redisConn);
-            });
+                var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
-            builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
-            builder.Services.AddSingleton<IUserClusterStore, RedisUserClusterStore>();
-            builder.Services.AddSingleton<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
+                builder.Host.UseSerilog();
 
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+                builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+                {
+                    var redisConn = builder.Configuration.GetConnectionString("Redis")
+                        ?? throw new Exception("No se encontró la cadena de conexión de Redis.");
 
-            var app = builder.Build();
+                    return ConnectionMultiplexer.Connect(redisConn);
+                });
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
+                builder.Services.AddControllers();
+                builder.Services.AddSingleton<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
+                builder.Services.AddSingleton<IAuditService, AuditService>();
+                builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
+                builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
+                builder.Services.AddSingleton<IUserClusterStore, RedisUserClusterStore>();
+                builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
+
+                builder.Services.AddEndpointsApiExplorer();
+                builder.Services.AddSwaggerGen();
+
+                var app = builder.Build();
+
+                if (app.Environment.IsDevelopment())
+                {
+                    app.UseSwagger();
+                    app.UseSwaggerUI();
+                }
+
+                app.UseAuthorization();
+                app.MapControllers();
+
+                app.Run();
             }
-
-            app.UseAuthorization();
-
-
-            app.MapControllers();
-
-            app.Run();
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "La aplicación terminó inesperadamente");
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
         }
     }
 }
