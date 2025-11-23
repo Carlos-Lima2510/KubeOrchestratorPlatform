@@ -12,6 +12,11 @@ namespace Servidor
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            // Configuración de logging
+            builder.Logging.ClearProviders();
+            builder.Logging.AddConsole();
+            builder.Logging.SetMinimumLevel(LogLevel.Information);
+
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
             {
                 var redisConn = builder.Configuration.GetConnectionString("Redis")
@@ -26,7 +31,6 @@ namespace Servidor
             builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
             builder.Services.AddSingleton<IUserClusterStore, RedisUserClusterStore>();
             builder.Services.AddSingleton<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
-
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
