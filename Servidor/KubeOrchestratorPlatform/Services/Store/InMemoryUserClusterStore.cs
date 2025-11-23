@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Servidor.KubeOrchestratorPlatform.Models;
 
-namespace Servidor.KubeOrchestratorPlatform.Repositories
+namespace Servidor.KubeOrchestratorPlatform.Services.Store
 {
     public class InMemoryUserClusterStore : IUserClusterStore
     {

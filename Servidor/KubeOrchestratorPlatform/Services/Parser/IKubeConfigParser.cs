@@ -1,6 +1,6 @@
 using Servidor.KubeOrchestratorPlatform.Models;
 
-namespace Servidor.KubeOrchestratorPlatform.Services.Auth
+namespace Servidor.KubeOrchestratorPlatform.Services.Parser
 {
     public interface IKubeConfigParser
     {
