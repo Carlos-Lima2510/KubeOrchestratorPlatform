@@ -1,5 +1,5 @@
 using k8s;
-using Servidor.KubeOrchestratorPlatform.Factories;
+using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Store;
 using Servidor.KubeOrchestratorPlatform.Models;
 
