@@ -37,8 +37,6 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
             var parsed = _parser.Parse(yaml);
 
-            Console.WriteLine("Valores parseados: " + parsed.AuthType);
-
             var creds = new UserClusterCredentials
             {
                 Server = parsed.Server,
@@ -57,8 +55,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         [HttpGet("pods/{userId}")]
         public async Task<IActionResult> GetPods(string userId, string ns = "default")
         {
-            if (!store.Exists(userId))
-                return NotFound($"No se encontraron credenciales para el usuario {userId}");
+            var userCheck = UserExistance(userId);
+            if (userCheck != null)
+                return userCheck;
 
             var client = clientConnection.GetClient(userId);
 
@@ -67,6 +66,10 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
                 var pods = await client.CoreV1.ListNamespacedPodAsync(ns);
                 var podNames = pods.Items.Select(p => p.Metadata.Name);
                 return Ok(podNames);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(404, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -77,8 +80,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         [HttpGet("namespaces/{userId}")]
         public async Task<IActionResult> GetNamespaces(string userId)
         {
-            if (!store.Exists(userId))
-                return NotFound($"No se encontraron credenciales para el usuario {userId}");
+            var userCheck = UserExistance(userId);
+            if (userCheck != null)
+                return userCheck;
 
             var client = clientConnection.GetClient(userId);
 
@@ -87,6 +91,10 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
                 var namespaces = await client.CoreV1.ListNamespaceAsync();
                 var nsNames = namespaces.Items.Select(n => n.Metadata.Name);
                 return Ok(nsNames);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(404, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -97,8 +105,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         [HttpGet("services/{ns}/{userId}")]
         public async Task<IActionResult> GetServices(string ns, string userId)
         {
-            if (!store.Exists(userId))
-                return NotFound($"No se encontraron credenciales para el usuario {userId}");
+            var userCheck = UserExistance(userId);
+            if (userCheck != null)
+                return userCheck;
 
             var client = clientConnection.GetClient(userId);
 
@@ -108,10 +117,22 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
                 var servicesNames = services.Items.Select(s => s.Metadata.Name);
                 return Ok(servicesNames);
             }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(404, new { message = ex.Message });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = ex.Message });
             }
+        }
+
+        private IActionResult? UserExistance(string userId)
+        {
+            if (!store.Exists(userId))
+                return StatusCode(404, new { message = $"No se encontraron credenciales para el usuario {userId}" });
+            else
+                return null;
         }
     }
 }
