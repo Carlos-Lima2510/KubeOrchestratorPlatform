@@ -1,73 +1,145 @@
 ﻿using k8s;
 using Microsoft.AspNetCore.Mvc;
-using Servidor.KubeOrchestratorPlatform.Kubernetes;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+using Servidor.KubeOrchestratorPlatform.Models;
+using Servidor.KubeOrchestratorPlatform.Services.Auth;
+using Servidor.KubeOrchestratorPlatform.Factories;
+using Servidor.KubeOrchestratorPlatform.Repositories;
 
 namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class KubeTestController : ControllerBase
     {
-        private readonly IKubeConnection kubeConnection;
+        private readonly IKubeConfigParser _parser;
+        private readonly IKubernetesClientFactory _factory;
+        private readonly IUserClusterStore _store;
 
-        public KubeTestController(IKubeConnection kubeConnection)
+        public KubeTestController(
+            IKubeConfigParser parser,
+            IKubernetesClientFactory factory,
+            IUserClusterStore store)
         {
-            this.kubeConnection = kubeConnection;
+            _parser = parser;
+            _factory = factory;
+            _store = store;
         }
 
-        [HttpGet("pods")]
-        public async Task<IActionResult> GetPods()
+        // Endpoint para subir kubeconfig
+        [HttpPost("upload-kubeconfig/{userId}")]
+        public IActionResult UploadKubeConfig(string userId, [FromForm] IFormFile file)
         {
+            if (file == null || file.Length == 0)
+                return BadRequest("Archivo kubeconfig vacío.");
+
+            using var reader = new StreamReader(file.OpenReadStream());
+            var yaml = reader.ReadToEnd();
+
+            var parsed = _parser.Parse(yaml);
+
+            var creds = new UserClusterCredentials
+            {
+                Server = parsed.Server,
+                CertificateAuthorityData = parsed.CertificateAuthorityData,
+                Token = parsed.Token,
+                ClientCertificateData = parsed.ClientCertificateData,
+                ClientKeyData = parsed.ClientKeyData,
+                AuthType = parsed.AuthType
+            };
+
+            _store.Save(userId, creds);
+
+            return Ok(new { message = "Kubeconfig cargado correctamente" });
+        }
+
+        [HttpGet("pods/{userId}")]
+        public async Task<IActionResult> GetPods(string userId, string ns = "default")
+        {
+            if (!_store.Exists(userId))
+                return NotFound($"No se encontraron credenciales para el usuario {userId}");
+
+            var creds = _store.Get(userId);
+
+            var client = _factory.CreateClient(new ParsedKubeConfig
+            {
+                Server = creds.Server,
+                CertificateAuthorityData = creds.CertificateAuthorityData,
+                Token = creds.Token,
+                ClientCertificateData = creds.ClientCertificateData,
+                ClientKeyData = creds.ClientKeyData,
+                AuthType = creds.AuthType
+            });
+
             try
             {
-                IKubernetes client = kubeConnection.GetClient();
-
-                var pods = await client.CoreV1.ListNamespacedPodAsync(kubeConnection.Namespace);
-
-                return Ok(new
-                {
-                    Namespace = kubeConnection.Namespace,
-                    Count = pods.Items.Count,
-                    Pods = pods.Items.Select(p => p.Metadata.Name)
-                });
+                var pods = await client.CoreV1.ListNamespacedPodAsync(ns);
+                var podNames = pods.Items.Select(p => p.Metadata.Name);
+                return Ok(podNames);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message, stack = ex.StackTrace });
+                return StatusCode(500, new { error = ex.Message });
             }
         }
-        // GET: api/<KubeTestController>
-        [HttpGet]
-        public IEnumerable<string> Get()
+
+        [HttpGet("namespaces/{userId}")]
+        public async Task<IActionResult> GetNamespaces(string userId)
         {
-            return new string[] { "value1", "value2" };
+            if (!_store.Exists(userId))
+                return NotFound($"No se encontraron credenciales para el usuario {userId}");
+
+            var creds = _store.Get(userId);
+
+            var client = _factory.CreateClient(new ParsedKubeConfig
+            {
+                Server = creds.Server,
+                CertificateAuthorityData = creds.CertificateAuthorityData,
+                Token = creds.Token,
+                ClientCertificateData = creds.ClientCertificateData,
+                ClientKeyData = creds.ClientKeyData,
+                AuthType = creds.AuthType
+            });
+
+            try
+            {
+                var namespaces = await client.CoreV1.ListNamespaceAsync();
+                var nsNames = namespaces.Items.Select(n => n.Metadata.Name);
+                return Ok(nsNames);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
-        // GET api/<KubeTestController>/5
-        [HttpGet("{id}")]
-        public string Get(int id)
+        [HttpGet("services/{ns}/{userId}")]
+        public async Task<IActionResult> GetServices(string ns, string userId)
         {
-            return "value";
-        }
+            if (!_store.Exists(userId))
+                return NotFound($"No se encontraron credenciales para el usuario {userId}");
 
-        // POST api/<KubeTestController>
-        [HttpPost]
-        public void Post([FromBody] string value)
-        {
-        }
+            var creds = _store.Get(userId);
 
-        // PUT api/<KubeTestController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
-        {
-        }
+            var client = _factory.CreateClient(new ParsedKubeConfig
+            {
+                Server = creds.Server,
+                CertificateAuthorityData = creds.CertificateAuthorityData,
+                Token = creds.Token,
+                ClientCertificateData = creds.ClientCertificateData,
+                ClientKeyData = creds.ClientKeyData,
+                AuthType = creds.AuthType
+            });
 
-        // DELETE api/<KubeTestController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
+            try
+            {
+                var services = await client.CoreV1.ListNamespacedServiceAsync(ns);
+                var servicesNames = services.Items.Select(s => s.Metadata.Name);
+                return Ok(servicesNames);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
     }
 }
