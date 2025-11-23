@@ -1,4 +1,4 @@
-
+using StackExchange.Redis;
 using Servidor.KubeOrchestratorPlatform.Factories;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using Servidor.KubeOrchestratorPlatform.Services.Parser;
@@ -12,13 +12,19 @@ namespace Servidor
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+            {
+                var redisConn = builder.Configuration.GetConnectionString("Redis")
+                    ?? throw new Exception("No se encontró la cadena de conexión de Redis.");
+
+                return ConnectionMultiplexer.Connect(redisConn);
+            });
 
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
             builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
-            builder.Services.AddSingleton<IUserClusterStore, InMemoryUserClusterStore>();
+            builder.Services.AddSingleton<IUserClusterStore, RedisUserClusterStore>();
             builder.Services.AddSingleton<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
 
 
