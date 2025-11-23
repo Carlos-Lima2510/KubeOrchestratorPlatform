@@ -1,5 +1,5 @@
 using StackExchange.Redis;
-using Servidor.KubeOrchestratorPlatform.Factories;
+using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using Servidor.KubeOrchestratorPlatform.Services.Parser;
 using Servidor.KubeOrchestratorPlatform.Services.Store;

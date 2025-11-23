@@ -55,8 +55,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         [HttpDelete("config/{userId}")]
         public IActionResult DeleteConfig(string userId)
         {
-            if (!store.Exists(userId))
-                return NotFound($"No existe configuración para el usuario {userId}");
+            var userCheck = UserExistance(userId);
+            if (userCheck != null)
+                return userCheck;
 
             store.Remove(userId);
 
