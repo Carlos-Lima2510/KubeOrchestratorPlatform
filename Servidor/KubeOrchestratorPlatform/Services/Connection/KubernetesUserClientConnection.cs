@@ -18,10 +18,9 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Connection
 
         public IKubernetes GetClient(string userId)
         {
-            if (!store.Exists(userId))
-                throw new KeyNotFoundException($"No se encontraron credenciales para {userId}");
-
-            var credentials = store.Get(userId);
+            var credentials = store.Get(userId)
+                ?? throw new Exception($"No hay credenciales para el usuario {userId}");
+                
             return factory.CreateClient(new ParsedKubeConfig
             {
                 Server = credentials.Server,

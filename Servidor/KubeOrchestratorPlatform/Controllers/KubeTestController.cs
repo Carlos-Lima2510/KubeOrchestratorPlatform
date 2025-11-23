@@ -52,6 +52,19 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             return Ok(new { message = "Kubeconfig cargado correctamente" });
         }
 
+        [HttpDelete("config/{userId}")]
+        public IActionResult DeleteConfig(string userId)
+        {
+            var userCheck = UserExistance(userId);
+            if (userCheck != null)
+                return userCheck;
+
+            store.Remove(userId);
+
+            return Ok(new { message = "Configuración eliminada correctamente" });
+        }
+
+
         [HttpGet("pods/{userId}")]
         public async Task<IActionResult> GetPods(string userId, string ns = "default")
         {
