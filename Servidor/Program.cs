@@ -4,8 +4,9 @@ using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using Servidor.KubeOrchestratorPlatform.Services.Audit;
 using Servidor.KubeOrchestratorPlatform.Services.Parser;
-using Servidor.KubeOrchestratorPlatform.Services.Store;
 using Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators;
+using Servidor.KubeOrchestratorPlatform.Database.Migrations;
+using Microsoft.EntityFrameworkCore;
 
 namespace Servidor
 {
@@ -28,6 +29,14 @@ namespace Servidor
 
                 builder.Host.UseSerilog();
 
+                builder.Services.AddDbContext<UserCluster>(options =>
+                    options.UseMySql(
+                        builder.Configuration.GetConnectionString("DefaultConnection"),
+                        new MySqlServerVersion(new Version(8, 0, 44)) // ajusta según tu versión
+                    )
+                );
+
+
                 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
                 {
                     var redisConn = builder.Configuration.GetConnectionString("Redis")
@@ -41,7 +50,7 @@ namespace Servidor
                 builder.Services.AddSingleton<IAuditService, AuditService>();
                 builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
                 builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
-                builder.Services.AddSingleton<IUserClusterStore, RedisUserClusterStore>();
+                //builder.Services.AddSingleton<IUserClusterStore, RedisUserClusterStore>();
                 builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
 
                 builder.Services.AddEndpointsApiExplorer();
