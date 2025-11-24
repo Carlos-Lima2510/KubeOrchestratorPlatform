@@ -4,6 +4,6 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Connection
 {
     public interface IKubernetesUserClientConnection
     {
-        IKubernetes GetClient(string userId);
+        IKubernetes GetClient(int userId, string clusterId);
     }
 }

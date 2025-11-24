@@ -16,9 +16,9 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Connection
             this.factory = factory;
         }
 
-        public IKubernetes GetClient(string userId)
+        public IKubernetes GetClient(int userId, string clusterId)
         {
-            var credentials = store.Get(userId)
+            var credentials = store.Get(userId, clusterId)
                 ?? throw new Exception($"No hay credenciales para el usuario {userId}");
                 
             return factory.CreateClient(new ParsedKubeConfig

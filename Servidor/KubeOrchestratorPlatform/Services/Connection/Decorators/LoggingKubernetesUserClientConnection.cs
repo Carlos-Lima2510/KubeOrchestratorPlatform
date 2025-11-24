@@ -14,17 +14,17 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators
             this.auditService = auditService;
         }
 
-        public IKubernetes GetClient(string userId)
+        public IKubernetes GetClient(int userId, string clusterId)
         {
             try
             {
-                var client = innerClass.GetClient(userId);
-                auditService.LogConnection(userId, true);
+                var client = innerClass.GetClient(userId, clusterId);
+                auditService.LogConnection(userId.ToString(), true);
                 return client;
             }
             catch (Exception ex)
             {
-                auditService.LogConnection(userId, false, ex.Message);
+                auditService.LogConnection(userId.ToString(), false, ex.Message);
                 throw;
             }
         }

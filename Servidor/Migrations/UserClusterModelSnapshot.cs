@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Servidor.KubeOrchestratorPlatform.Database.Migrations;
+using Servidor.KubeOrchestratorPlatform.Database.Data;
 
 #nullable disable
 
 namespace Servidor.Migrations
 {
-    [DbContext(typeof(UserCluster))]
+    [DbContext(typeof(AppDbContext))]
     partial class UserClusterModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
