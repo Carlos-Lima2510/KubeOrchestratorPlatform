@@ -6,25 +6,25 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
 {
     public class UserClusterCache : IUserClusterCache
     {
-        private readonly IDatabase _database;
+        private readonly IDatabase database;
         private readonly string _prefix = "usercluster:";
 
         public UserClusterCache(IConnectionMultiplexer redis)
         {
-            _database = redis.GetDatabase();
+            database = redis.GetDatabase();
         }
 
         private string Key(int userId, string clusterId) => $"{_prefix}{userId}:{clusterId}";
 
         public bool Exists(int userId, string clusterId)
         {
-            return _database.KeyExists(Key(userId, clusterId));
+            return database.KeyExists(Key(userId, clusterId));
         }
         public ConnectedCluster? Get(int userId, string clusterId)
         {
             try
             {
-                var json = _database.StringGet(Key(userId, clusterId));
+                var json = database.StringGet(Key(userId, clusterId));
                 if (json.IsNullOrEmpty) return null;
 
                 var cacheModel = JsonSerializer.Deserialize<ClusterCacheModel>(json!);
@@ -83,7 +83,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
                 
                 var json = JsonSerializer.Serialize(cacheModel);
                 
-                _database.StringSet(Key(userId, clusterId), json, TimeSpan.FromHours(12));
+                database.StringSet(Key(userId, clusterId), json, TimeSpan.FromHours(12));
             }
             catch (Exception ex)
             {
@@ -93,7 +93,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
 
         public void Remove(int userId, string clusterId)
         {
-            _database.KeyDelete(Key(userId, clusterId));
+            database.KeyDelete(Key(userId, clusterId));
         }
     }
 }
