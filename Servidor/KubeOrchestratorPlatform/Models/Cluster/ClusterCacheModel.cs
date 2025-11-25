@@ -11,6 +11,6 @@ namespace Servidor.KubeOrchestratorPlatform.Models
         public string? CertificateAuthorityData { get; set; }
         public string? ClientCertificateData { get; set; }
         public string? ClientKeyData { get; set; }
-        public string AuthType { get; set; } = "Bearer";
+        public string AuthType { get; set; } = "Token";
     }
 }
