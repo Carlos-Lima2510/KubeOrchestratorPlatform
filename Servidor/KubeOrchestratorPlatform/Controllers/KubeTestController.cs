@@ -56,7 +56,6 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
                 var displayName = parsed.ClusterName ?? clusterId;
                 
-                // Nota: Asegúrate de que tu Store acepte 'int' userId
                 _store.Save(userId, clusterId, creds, parsed.Server, displayName);
 
                 _audit.LogOperation(parsed.UserName ?? "User", displayName, "UploadKubeConfig", true);
@@ -69,11 +68,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
         }
 
-        // --- ELIMINAR CONFIGURACIÓN ---
         [HttpDelete("config/{userId}/{clusterId}")]
         public IActionResult DeleteConfig(int userId, string clusterId)
         {
-            // Usamos el helper privado para validar y obtener contexto
             var context = ValidateAndGetContext(userId, clusterId, "DeleteConfig");
             if (context.ErrorResult != null) return context.ErrorResult;
 
@@ -85,12 +82,10 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                 // Log de error inesperado
                  return StatusCode(500, new { error = ex.Message });
             }
         }
 
-        // --- OBTENER PODS ---
         [HttpGet("pods/{userId}/{clusterId}/{ns}")]
         public async Task<IActionResult> GetPods(int userId, string clusterId, string ns)
         {
@@ -99,13 +94,10 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
             try
             {
-                // Obtenemos el cliente K8s ya autenticado
                 var client = _clientConnection.GetClient(userId, clusterId);
                 
-                // Llamada a Kubernetes
                 var pods = await client.CoreV1.ListNamespacedPodAsync(ns);
                 
-                // Proyección de datos (Select)
                 var podList = pods.Items.Select(p => new {
                     Name = p.Metadata.Name,
                     Status = p.Status.Phase,
@@ -128,7 +120,6 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
         }
 
-        // --- OBTENER NAMESPACES ---
         [HttpGet("namespaces/{userId}/{clusterId}")]
         public async Task<IActionResult> GetNamespaces(int userId, string clusterId)
         {
@@ -155,7 +146,6 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
         }
 
-        // --- OBTENER SERVICIOS ---
         [HttpGet("services/{userId}/{clusterId}/{ns}")]
         public async Task<IActionResult> GetServices(int userId, string clusterId, string ns)
         {
@@ -183,10 +173,6 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-
-        // ==========================================================
-        // HELPER PRIVADO: Evita repetir código de validación
-        // ==========================================================
         private (IActionResult? ErrorResult, string UserName, string ClusterName) ValidateAndGetContext(int userId, string clusterId, string operationName)
         {
             var clusterConfig = _store.GetClusterWithUser(userId, clusterId);
