@@ -7,14 +7,14 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
     public class UserClusterCache : IUserClusterCache
     {
         private readonly IDatabase database;
-        private readonly string _prefix = "usercluster:";
+        private readonly string prefix = "usercluster:";
 
         public UserClusterCache(IConnectionMultiplexer redis)
         {
             database = redis.GetDatabase();
         }
 
-        private string Key(int userId, string clusterId) => $"{_prefix}{userId}:{clusterId}";
+        private string Key(int userId, string clusterId) => $"{prefix}{userId}:{clusterId}";
 
         public bool Exists(int userId, string clusterId)
         {
@@ -27,7 +27,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
                 var json = database.StringGet(Key(userId, clusterId));
                 if (json.IsNullOrEmpty) return null;
 
-                var cacheModel = JsonSerializer.Deserialize<ClusterCacheModel>(json!);
+                var cacheModel = JsonSerializer.Deserialize<ClusterCache>(json!);
                 
                 if (cacheModel == null) return null;
 
@@ -67,7 +67,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
         {
             try
             {
-                var cacheModel = new ClusterCacheModel
+                var cacheModel = new ClusterCache
                 {
                     ServerUrl = cluster.ServerUrl,
                     DisplayName = cluster.DisplayName,

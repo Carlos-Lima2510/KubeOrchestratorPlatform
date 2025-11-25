@@ -29,7 +29,6 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             _audit = audit;
         }
 
-        // --- SUBIDA DE ARCHIVO (Ya corregido) ---
         [HttpPost("upload-kubeconfig/{userId}/{clusterId}")]
         public async Task<IActionResult> UploadKubeConfig(int userId, string clusterId, [FromForm] IFormFile file)
         {
