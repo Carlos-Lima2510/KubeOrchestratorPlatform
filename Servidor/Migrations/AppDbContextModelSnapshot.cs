@@ -3,7 +3,6 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Servidor.KubeOrchestratorPlatform.Database.Data;
 
@@ -12,11 +11,9 @@ using Servidor.KubeOrchestratorPlatform.Database.Data;
 namespace Servidor.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251125180328_UserClusterModelImplementation")]
-    partial class UserClusterModelImplementation
+    partial class AppDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -48,15 +45,13 @@ namespace Servidor.Migrations
                     b.Property<int>("ConnectedClusterId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Server")
-                        .HasColumnType("longtext");
-
                     b.Property<string>("Token")
                         .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ConnectedClusterId");
+                    b.HasIndex("ConnectedClusterId")
+                        .IsUnique();
 
                     b.ToTable("ClusterCredentials");
                 });
@@ -69,18 +64,11 @@ namespace Servidor.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ClusterId")
-                        .IsRequired()
-                        .HasColumnType("varchar(255)");
-
                     b.Property<string>("Context")
                         .HasColumnType("varchar(255)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
-
-                    b.Property<int>("CredentialsId")
-                        .HasColumnType("int");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
@@ -96,6 +84,10 @@ namespace Servidor.Migrations
                     b.Property<DateTime?>("LastUsedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("PublicClusterId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
                     b.Property<string>("ServerUrl")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -105,9 +97,7 @@ namespace Servidor.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CredentialsId");
-
-                    b.HasIndex("UserId", "ClusterId", "Context")
+                    b.HasIndex("UserId", "PublicClusterId", "Context")
                         .IsUnique();
 
                     b.ToTable("ConnectedClusters");
@@ -131,7 +121,7 @@ namespace Servidor.Migrations
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("Password")
+                    b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -153,8 +143,8 @@ namespace Servidor.Migrations
             modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.ClusterCredentials", b =>
                 {
                     b.HasOne("Servidor.KubeOrchestratorPlatform.Models.ConnectedCluster", "ConnectedCluster")
-                        .WithMany()
-                        .HasForeignKey("ConnectedClusterId")
+                        .WithOne("Credentials")
+                        .HasForeignKey("Servidor.KubeOrchestratorPlatform.Models.ClusterCredentials", "ConnectedClusterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -163,21 +153,19 @@ namespace Servidor.Migrations
 
             modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.ConnectedCluster", b =>
                 {
-                    b.HasOne("Servidor.KubeOrchestratorPlatform.Models.ClusterCredentials", "Credentials")
-                        .WithMany()
-                        .HasForeignKey("CredentialsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Servidor.KubeOrchestratorPlatform.Models.User", "User")
                         .WithMany("Clusters")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Credentials");
-
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.ConnectedCluster", b =>
+                {
+                    b.Navigation("Credentials")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.User", b =>

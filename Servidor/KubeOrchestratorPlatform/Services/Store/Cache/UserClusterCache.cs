@@ -25,7 +25,27 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
             {
                 var value = database.StringGet(Key(userId, clusterId));
                 if (value.IsNullOrEmpty) return null;
-                return JsonSerializer.Deserialize<ClusterCredentials>(value.IsNullOrEmpty);
+                
+                var options = new JsonSerializerOptions
+                {
+                    ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
+                    PropertyNameCaseInsensitive = true
+                };
+                
+                // Deserializar el DTO y reconstruir ClusterCredentials
+                using var doc = JsonDocument.Parse(value!.ToString());
+                var root = doc.RootElement;
+                
+                return new ClusterCredentials
+                {
+                    Id = root.TryGetProperty("Id", out var id) ? id.GetInt32() : 0,
+                    CertificateAuthorityData = root.TryGetProperty("CertificateAuthorityData", out var ca) ? ca.GetString() : null,
+                    Token = root.TryGetProperty("Token", out var token) ? token.GetString() : null,
+                    ClientCertificateData = root.TryGetProperty("ClientCertificateData", out var cert) ? cert.GetString() : null,
+                    ClientKeyData = root.TryGetProperty("ClientKeyData", out var key) ? key.GetString() : null,
+                    AuthType = root.TryGetProperty("AuthType", out var auth) ? auth.GetString() : null,
+                    ConnectedClusterId = root.TryGetProperty("ConnectedClusterId", out var clusterIdProp) ? clusterIdProp.GetInt32() : 0
+                };
             }
             catch (Exception ex)
             {
@@ -38,7 +58,24 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
         {
             try
             {
-                var json = JsonSerializer.Serialize(credentials);
+                // Crear un DTO sin referencias circulares para el cache
+                var cacheDto = new
+                {
+                    credentials.Id,
+                    credentials.CertificateAuthorityData,
+                    credentials.Token,
+                    credentials.ClientCertificateData,
+                    credentials.ClientKeyData,
+                    credentials.AuthType,
+                    credentials.ConnectedClusterId
+                };
+                
+                var options = new JsonSerializerOptions
+                {
+                    ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+                };
+                
+                var json = JsonSerializer.Serialize(cacheDto, options);
                 database.StringSet(Key(userId, clusterId), json, TimeSpan.FromHours(12));
             }
             catch (Exception ex)

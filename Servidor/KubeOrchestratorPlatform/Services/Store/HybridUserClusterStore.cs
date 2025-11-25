@@ -36,34 +36,56 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store
             return null;
         }
 
+        public ConnectedCluster? GetClusterWithUser(int userId, string clusterId)
+        {
+            return repository.GetClusterConfiguration(userId, clusterId);
+        }
+
         public void Remove(int userId, string clusterId)
         {
             repository.RemoveClusterConfiguration(userId, clusterId);
             cache.Remove(userId, clusterId);
         }
-
-        public void Save(int userId, string clusterId, ClusterCredentials credentials)
+        public void Save(int userId, string publicClusterId, ClusterCredentials credentials, string serverUrl, string displayName)
         {
-            var config = repository.GetClusterConfiguration(userId, clusterId);
+            var config = repository.GetClusterConfiguration(userId, publicClusterId);
+
             if (config == null)
             {
                 config = new ConnectedCluster
                 {
                     UserId = userId,
-                    ClusterId = clusterId,
-                    Credentials = credentials,
-                    ServerUrl = credentials.Server ?? ""
+                    PublicClusterId = publicClusterId,
+                    ServerUrl = serverUrl,
+                    DisplayName = displayName,
+                    IsActive = true,
+                    Credentials = credentials
                 };
+
+                repository.SaveClusterConfiguration(config);
             }
             else
             {
-                config.Credentials = credentials;
-                config.ServerUrl = credentials.Server ?? "";
+                config.ServerUrl = serverUrl;
+                config.DisplayName = displayName;
+
+                if (config.Credentials == null)
+                {
+                    config.Credentials = credentials;
+                }
+                else
+                {
+                    config.Credentials.Token = credentials.Token;
+                    config.Credentials.ClientCertificateData = credentials.ClientCertificateData;
+                    config.Credentials.ClientKeyData = credentials.ClientKeyData;
+                    config.Credentials.CertificateAuthorityData = credentials.CertificateAuthorityData;
+                    config.Credentials.AuthType = credentials.AuthType;
+                }
+
+                repository.SaveClusterConfiguration(config); 
             }
 
-            repository.SaveClusterConfiguration(config);
-
-            cache.Set(userId, clusterId, credentials);
+            cache.Set(userId, publicClusterId, config.Credentials);
         }
     }
 }

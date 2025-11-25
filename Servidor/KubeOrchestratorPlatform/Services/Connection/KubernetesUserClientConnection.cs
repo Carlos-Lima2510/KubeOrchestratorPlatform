@@ -18,17 +18,26 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Connection
 
         public IKubernetes GetClient(int userId, string clusterId)
         {
-            var credentials = store.Get(userId, clusterId)
-                ?? throw new Exception($"No hay credenciales para el usuario {userId}");
-                
+            var clusterConfig = store.GetClusterWithUser(userId, clusterId);
+
+            if (clusterConfig == null)
+                throw new Exception($"El cluster {clusterId} no fue encontrado para el usuario {userId}");
+            
+            if (string.IsNullOrEmpty(clusterConfig.ServerUrl))
+                throw new Exception("La configuración del cluster no tiene una ServerUrl válida.");
+
+            if (clusterConfig.Credentials == null)
+                throw new Exception("El cluster existe pero no tiene credenciales asociadas.");
+
             return factory.CreateClient(new ParsedKubeConfig
             {
-                Server = credentials.Server,
-                CertificateAuthorityData = credentials.CertificateAuthorityData,
-                Token = credentials.Token,
-                ClientCertificateData = credentials.ClientCertificateData,
-                ClientKeyData = credentials.ClientKeyData,
-                AuthType = credentials.AuthType
+                Server = clusterConfig.ServerUrl, 
+
+                CertificateAuthorityData = clusterConfig.Credentials.CertificateAuthorityData,
+                Token = clusterConfig.Credentials.Token,
+                ClientCertificateData = clusterConfig.Credentials.ClientCertificateData,
+                ClientKeyData = clusterConfig.Credentials.ClientKeyData,
+                AuthType = clusterConfig.Credentials.AuthType
             });
         }
     }

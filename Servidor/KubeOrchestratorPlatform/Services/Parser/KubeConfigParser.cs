@@ -30,14 +30,14 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Parser
 
             return new ParsedKubeConfig
             {
+                ClusterName = context.ContextDetails.Cluster,
+                UserName = context.ContextDetails.User,
+
                 Server = clusterInfo.Server,
                 CertificateAuthorityData = clusterInfo.CertificateAuthorityData,
-
                 Token = userInfo.Token,
-
                 ClientCertificateData = userInfo.ClientCertificateData,
                 ClientKeyData = userInfo.ClientKeyData,
-
                 AuthType = DetectAuthType(userInfo)
             };
         }
@@ -45,14 +45,14 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Parser
         private string DetectAuthType(UserCredentials userInfo)
         {
             var user = userInfo;
-            
+
             if (!string.IsNullOrEmpty(user.Token))
                 return "Token";
 
             if (!string.IsNullOrEmpty(user.ClientCertificateData) &&
                 !string.IsNullOrEmpty(user.ClientKeyData))
                 return "ClientCertificate";
-            
+
             return "Unknown";
         }
     }

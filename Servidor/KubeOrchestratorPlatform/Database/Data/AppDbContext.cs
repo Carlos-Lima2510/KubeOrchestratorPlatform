@@ -39,7 +39,7 @@ namespace Servidor.KubeOrchestratorPlatform.Database.Data
 
             // Unique constraint: User + ClusterId + Context
             modelBuilder.Entity<ConnectedCluster>()
-                .HasIndex(c => new { c.UserId, c.ClusterId, c.Context })
+                .HasIndex(c => new { c.UserId, c.PublicClusterId, c.Context })
                 .IsUnique();
         }
 

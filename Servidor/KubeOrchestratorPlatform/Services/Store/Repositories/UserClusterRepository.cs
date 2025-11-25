@@ -17,7 +17,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Repositories
         {
             try
             {
-                return database.ConnectedClusters.Any(c => c.UserId == userId && c.ClusterId == clusterId);
+                return database.ConnectedClusters.Any(c => c.UserId == userId && c.PublicClusterId == clusterId);
             }
             catch (Exception ex)
             {
@@ -31,7 +31,8 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Repositories
             {
                 return database.ConnectedClusters
                     .Include(c => c.Credentials)
-                    .FirstOrDefault(c => c.UserId == userId && c.ClusterId == clusterId);
+                    .Include(c => c.User)
+                    .FirstOrDefault(c => c.UserId == userId && c.PublicClusterId == clusterId);
             }
             catch (Exception ex)
             {
@@ -44,7 +45,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Repositories
             try
             {
                 var config = database.ConnectedClusters
-                    .FirstOrDefault(c => c.UserId == userId && c.ClusterId == clusterId);
+                    .FirstOrDefault(c => c.UserId == userId && c.PublicClusterId == clusterId);
 
                 if (config != null)
                 {
