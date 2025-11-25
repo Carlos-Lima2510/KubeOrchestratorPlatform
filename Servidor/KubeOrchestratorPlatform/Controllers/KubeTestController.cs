@@ -42,7 +42,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             var yaml = reader.ReadToEnd();
             var parsed = _parser.Parse(yaml);
 
-            var creds = new UserClusterCredentials
+            var creds = new ClusterCredentials
             {
                 Server = parsed.Server,
                 CertificateAuthorityData = parsed.CertificateAuthorityData,

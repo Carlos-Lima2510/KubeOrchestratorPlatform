@@ -17,7 +17,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Repositories
         {
             try
             {
-                return database.ClusterConfigurations.Any(c => c.UserId == userId && c.ClusterId == clusterId);
+                return database.ConnectedClusters.Any(c => c.UserId == userId && c.ClusterId == clusterId);
             }
             catch (Exception ex)
             {
@@ -25,11 +25,11 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Repositories
             }
         }
 
-        public ClusterConfiguration? GetClusterConfiguration(int userId, string clusterId)
+        public ConnectedCluster? GetClusterConfiguration(int userId, string clusterId)
         {
             try
             {
-                return database.ClusterConfigurations
+                return database.ConnectedClusters
                     .Include(c => c.Credentials)
                     .FirstOrDefault(c => c.UserId == userId && c.ClusterId == clusterId);
             }
@@ -43,12 +43,12 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Repositories
         {
             try
             {
-                var config = database.ClusterConfigurations
+                var config = database.ConnectedClusters
                     .FirstOrDefault(c => c.UserId == userId && c.ClusterId == clusterId);
 
                 if (config != null)
                 {
-                    database.ClusterConfigurations.Remove(config);
+                    database.ConnectedClusters.Remove(config);
                     database.SaveChanges();
                 }
             }
@@ -62,14 +62,14 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Repositories
             }
         }
 
-        public void SaveClusterConfiguration(ClusterConfiguration configuration)
+        public void SaveClusterConfiguration(ConnectedCluster configuration)
         {
             try
             {
                 if (configuration.Id == 0)
-                    database.ClusterConfigurations.Add(configuration);
+                    database.ConnectedClusters.Add(configuration);
                 else
-                    database.ClusterConfigurations.Update(configuration);
+                    database.ConnectedClusters.Update(configuration);
 
                 database.SaveChanges();
             }

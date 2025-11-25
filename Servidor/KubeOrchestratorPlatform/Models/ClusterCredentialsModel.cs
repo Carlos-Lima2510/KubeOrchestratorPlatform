@@ -1,6 +1,6 @@
 namespace Servidor.KubeOrchestratorPlatform.Models
 {
-    public class UserClusterCredentials
+    public class ClusterCredentials
     {
         public int Id { get; set; }
         public string? Server { get; set; }
@@ -9,5 +9,7 @@ namespace Servidor.KubeOrchestratorPlatform.Models
         public string? ClientCertificateData { get; set; }
         public string? ClientKeyData { get; set; }
         public string? AuthType { get; set;}
+        public int ConnectedClusterId { get; set; }
+        public ConnectedCluster ConnectedCluster { get; set; } = null!;
     }
 }

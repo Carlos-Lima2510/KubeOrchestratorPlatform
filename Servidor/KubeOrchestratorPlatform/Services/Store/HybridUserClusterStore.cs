@@ -21,7 +21,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store
             return repository.Exists(userId, clusterId);
         }
 
-        public UserClusterCredentials? Get(int userId, string clusterId)
+        public ClusterCredentials? Get(int userId, string clusterId)
         {
             var cached = cache.Get(userId, clusterId);
             if (cached != null) return cached;
@@ -42,12 +42,12 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store
             cache.Remove(userId, clusterId);
         }
 
-        public void Save(int userId, string clusterId, UserClusterCredentials credentials)
+        public void Save(int userId, string clusterId, ClusterCredentials credentials)
         {
             var config = repository.GetClusterConfiguration(userId, clusterId);
             if (config == null)
             {
-                config = new ClusterConfiguration
+                config = new ConnectedCluster
                 {
                     UserId = userId,
                     ClusterId = clusterId,

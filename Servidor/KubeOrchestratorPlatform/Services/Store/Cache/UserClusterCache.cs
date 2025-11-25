@@ -19,13 +19,13 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
             return database.KeyExists(Key(userId, clusterId));
         }
 
-        public UserClusterCredentials? Get(int userId, string clusterId)
+        public ClusterCredentials? Get(int userId, string clusterId)
         {
             try
             {
                 var value = database.StringGet(Key(userId, clusterId));
                 if (value.IsNullOrEmpty) return null;
-                return JsonSerializer.Deserialize<UserClusterCredentials>(value);
+                return JsonSerializer.Deserialize<ClusterCredentials>(value.IsNullOrEmpty);
             }
             catch (Exception ex)
             {
@@ -34,7 +34,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
             }
         }
 
-        public void Set(int userId, string clusterId, UserClusterCredentials credentials)
+        public void Set(int userId, string clusterId, ClusterCredentials credentials)
         {
             try
             {

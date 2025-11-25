@@ -22,7 +22,44 @@ namespace Servidor.Migrations
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
-            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.ClusterConfiguration", b =>
+            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.ClusterCredentials", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AuthType")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("CertificateAuthorityData")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ClientCertificateData")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ClientKeyData")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("ConnectedClusterId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Server")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Token")
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConnectedClusterId")
+                        .IsUnique();
+
+                    b.ToTable("ClusterCredentials");
+                });
+
+            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.ConnectedCluster", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -39,9 +76,6 @@ namespace Servidor.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
-
-                    b.Property<int>("CredentialsId")
-                        .HasColumnType("int");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
@@ -66,12 +100,10 @@ namespace Servidor.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CredentialsId");
-
                     b.HasIndex("UserId", "ClusterId", "Context")
                         .IsUnique();
 
-                    b.ToTable("ClusterConfigurations");
+                    b.ToTable("ConnectedClusters");
                 });
 
             modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.User", b =>
@@ -111,54 +143,32 @@ namespace Servidor.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.UserClusterCredentials", b =>
+            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.ClusterCredentials", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AuthType")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("CertificateAuthorityData")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ClientCertificateData")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ClientKeyData")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Server")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Token")
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("UserClusterCredentials");
-                });
-
-            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.ClusterConfiguration", b =>
-                {
-                    b.HasOne("Servidor.KubeOrchestratorPlatform.Models.UserClusterCredentials", "Credentials")
-                        .WithMany()
-                        .HasForeignKey("CredentialsId")
+                    b.HasOne("Servidor.KubeOrchestratorPlatform.Models.ConnectedCluster", "ConnectedCluster")
+                        .WithOne("Credentials")
+                        .HasForeignKey("Servidor.KubeOrchestratorPlatform.Models.ClusterCredentials", "ConnectedClusterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("ConnectedCluster");
+                });
+
+            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.ConnectedCluster", b =>
+                {
                     b.HasOne("Servidor.KubeOrchestratorPlatform.Models.User", "User")
                         .WithMany("Clusters")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Credentials");
-
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.ConnectedCluster", b =>
+                {
+                    b.Navigation("Credentials")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.User", b =>
