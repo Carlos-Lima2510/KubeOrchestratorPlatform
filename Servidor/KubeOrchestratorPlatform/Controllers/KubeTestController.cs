@@ -13,9 +13,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
     public class KubeTestController : ControllerBase
     {
         private readonly IKubeConfigParser _parser;
-        private readonly IUserClusterStore store;
-        private readonly IKubernetesUserClientConnection clientConnection;
-        private readonly IAuditService audit;
+        private readonly IUserClusterStore _store;
+        private readonly IKubernetesUserClientConnection _clientConnection;
+        private readonly IAuditService _audit;
 
         public KubeTestController(
             IKubeConfigParser parser,
@@ -24,151 +24,169 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             IAuditService audit)
         {
             _parser = parser;
-            this.store = store;
-            this.clientConnection = clientConnection;
-            this.audit = audit;
+            _store = store;
+            _clientConnection = clientConnection;
+            _audit = audit;
         }
 
-        [HttpPost("upload-kubeconfig/{userId}")]
-        public IActionResult UploadKubeConfig(string userId, [FromForm] IFormFile file)
+        [HttpPost("upload-kubeconfig/{userId}/{clusterId}")]
+        public async Task<IActionResult> UploadKubeConfig(int userId, string clusterId, [FromForm] IFormFile file)
         {
             if (file == null || file.Length == 0)
             {
-                audit.LogOperation(userId, "UploadKubeConfig", false, "Archivo kubeconfig vacío");
+                _audit.LogOperation(userId.ToString(), clusterId, "UploadKubeConfig", false, "Archivo vacío");
                 return BadRequest("Archivo kubeconfig vacío.");
             }
 
             using var reader = new StreamReader(file.OpenReadStream());
-            var yaml = reader.ReadToEnd();
-            var parsed = _parser.Parse(yaml);
-
-            var creds = new UserClusterCredentials
+            var yaml = await reader.ReadToEndAsync();
+            
+            try 
             {
-                Server = parsed.Server,
-                CertificateAuthorityData = parsed.CertificateAuthorityData,
-                Token = parsed.Token,
-                ClientCertificateData = parsed.ClientCertificateData,
-                ClientKeyData = parsed.ClientKeyData,
-                AuthType = parsed.AuthType
-            };
+                var parsed = _parser.Parse(yaml);
+                
+                var creds = new ClusterCredentials
+                {
+                    CertificateAuthorityData = parsed.CertificateAuthorityData,
+                    Token = parsed.Token,
+                    ClientCertificateData = parsed.ClientCertificateData,
+                    ClientKeyData = parsed.ClientKeyData,
+                    AuthType = parsed.AuthType
+                };
 
-            store.Save(userId, creds);
-            audit.LogOperation(userId, "UploadKubeConfig", true);
+                var displayName = parsed.ClusterName ?? clusterId;
+                
+                _store.Save(userId, clusterId, creds, parsed.Server, displayName);
 
-            return Ok(new { message = "Kubeconfig cargado correctamente" });
+                _audit.LogOperation(parsed.UserName ?? "User", displayName, "UploadKubeConfig", true);
+                return Ok(new { message = "Kubeconfig cargado correctamente", server = parsed.Server });
+            }
+            catch (Exception ex)
+            {
+                _audit.LogOperation(userId.ToString(), clusterId, "UploadKubeConfig", false, ex.Message);
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
 
-        [HttpDelete("config/{userId}")]
-        public IActionResult DeleteConfig(string userId)
+        [HttpDelete("config/{userId}/{clusterId}")]
+        public IActionResult DeleteConfig(int userId, string clusterId)
         {
-            var userCheck = UserExistance(userId);
-            if (userCheck != null)
-            {
-                audit.LogOperation(userId, "DeleteConfig", false, "Usuario no encontrado");
-                return userCheck;
-            }
-
-            store.Remove(userId);
-            audit.LogOperation(userId, "DeleteConfig", true);
-
-            return Ok(new { message = "Configuración eliminada correctamente" });
-        }
-
-        [HttpGet("pods/{userId}")]
-        public async Task<IActionResult> GetPods(string userId, string ns = "default")
-        {
-            var userCheck = UserExistance(userId);
-            if (userCheck != null)
-            {
-                audit.LogOperation(userId, "GetPods", false, "Usuario no encontrado");
-                return userCheck;
-            }
+            var context = ValidateAndGetContext(userId, clusterId, "DeleteConfig");
+            if (context.ErrorResult != null) return context.ErrorResult;
 
             try
             {
-                var client = clientConnection.GetClient(userId);
+                _store.Remove(userId, clusterId);
+                _audit.LogOperation(context.UserName, context.ClusterName, $"DeleteConfig-{clusterId}", true);
+                return Ok(new { message = "Configuración eliminada correctamente" });
+            }
+            catch (Exception ex)
+            {
+                 return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("pods/{userId}/{clusterId}/{ns}")]
+        public async Task<IActionResult> GetPods(int userId, string clusterId, string ns)
+        {
+            var context = ValidateAndGetContext(userId, clusterId, "GetPods");
+            if (context.ErrorResult != null) return context.ErrorResult;
+
+            try
+            {
+                var client = _clientConnection.GetClient(userId, clusterId);
+                
                 var pods = await client.CoreV1.ListNamespacedPodAsync(ns);
-                var podNames = pods.Items.Select(p => p.Metadata.Name);
-                audit.LogOperation(userId, "GetPods", true);
-                return Ok(podNames);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                audit.LogOperation(userId, "GetPods", false, ex.Message);
-                return StatusCode(404, new { message = ex.Message });
+                
+                var podList = pods.Items.Select(p => new {
+                    Name = p.Metadata.Name,
+                    Status = p.Status.Phase,
+                    IP = p.Status.PodIP,
+                    StartTime = p.Status.StartTime
+                });
+
+                _audit.LogOperation(context.UserName, context.ClusterName, $"GetPods-{clusterId}", true);
+                return Ok(podList);
             }
             catch (Exception ex)
             {
-                audit.LogOperation(userId, "GetPods", false, ex.Message);
+                _audit.LogOperation(context.UserName, context.ClusterName, $"GetPods-{clusterId}", false, ex.Message);
+
+                if (ex is k8s.Autorest.HttpOperationException httpEx && httpEx.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                     return NotFound(new { message = $"Namespace '{ns}' no encontrado en el cluster." });
+                }
                 return StatusCode(500, new { error = ex.Message });
             }
         }
 
-        [HttpGet("namespaces/{userId}")]
-        public async Task<IActionResult> GetNamespaces(string userId)
+        [HttpGet("namespaces/{userId}/{clusterId}")]
+        public async Task<IActionResult> GetNamespaces(int userId, string clusterId)
         {
-            var userCheck = UserExistance(userId);
-            if (userCheck != null)
-            {
-                audit.LogOperation(userId, "GetNamespaces", false, "Usuario no encontrado");
-                return userCheck;
-            }
+            var context = ValidateAndGetContext(userId, clusterId, "GetNamespaces");
+            if (context.ErrorResult != null) return context.ErrorResult;
 
             try
             {
-                var client = clientConnection.GetClient(userId);
+                var client = _clientConnection.GetClient(userId, clusterId);
                 var namespaces = await client.CoreV1.ListNamespaceAsync();
-                var nsNames = namespaces.Items.Select(n => n.Metadata.Name);
-                audit.LogOperation(userId, "GetNamespaces", true);
-                return Ok(nsNames);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                audit.LogOperation(userId, "GetNamespaces", false, ex.Message);
-                return StatusCode(404, new { message = ex.Message });
+                
+                var nsList = namespaces.Items.Select(n => new {
+                    Name = n.Metadata.Name,
+                    Status = n.Status.Phase
+                });
+
+                _audit.LogOperation(context.UserName, context.ClusterName, $"GetNamespaces-{clusterId}", true);
+                return Ok(nsList);
             }
             catch (Exception ex)
             {
-                audit.LogOperation(userId, "GetNamespaces", false, ex.Message);
+                _audit.LogOperation(context.UserName, context.ClusterName, $"GetNamespaces-{clusterId}", false, ex.Message);
                 return StatusCode(500, new { error = ex.Message });
             }
         }
 
-        [HttpGet("services/{ns}/{userId}")]
-        public async Task<IActionResult> GetServices(string ns, string userId)
+        [HttpGet("services/{userId}/{clusterId}/{ns}")]
+        public async Task<IActionResult> GetServices(int userId, string clusterId, string ns)
         {
-            var userCheck = UserExistance(userId);
-            if (userCheck != null)
-            {
-                audit.LogOperation(userId, "GetServices", false, "Usuario no encontrado");
-                return userCheck;
-            }
+            var context = ValidateAndGetContext(userId, clusterId, "GetServices");
+            if (context.ErrorResult != null) return context.ErrorResult;
 
             try
             {
-                var client = clientConnection.GetClient(userId);
+                var client = _clientConnection.GetClient(userId, clusterId);
                 var services = await client.CoreV1.ListNamespacedServiceAsync(ns);
-                var servicesNames = services.Items.Select(s => s.Metadata.Name);
-                audit.LogOperation(userId, "GetServices", true);
-                return Ok(servicesNames);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                audit.LogOperation(userId, "GetServices", false, ex.Message);
-                return StatusCode(404, new { message = ex.Message });
+                
+                var svcList = services.Items.Select(s => new {
+                    Name = s.Metadata.Name,
+                    Type = s.Spec.Type,
+                    ClusterIP = s.Spec.ClusterIP,
+                    Ports = s.Spec.Ports.Select(p => $"{p.Port}:{p.TargetPort}/{p.Protocol}")
+                });
+
+                _audit.LogOperation(context.UserName, context.ClusterName, $"GetServices-{clusterId}", true);
+                return Ok(svcList);
             }
             catch (Exception ex)
             {
-                audit.LogOperation(userId, "GetServices", false, ex.Message);
+                _audit.LogOperation(context.UserName, context.ClusterName, $"GetServices-{clusterId}", false, ex.Message);
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-
-        private IActionResult? UserExistance(string userId)
+        private (IActionResult? ErrorResult, string UserName, string ClusterName) ValidateAndGetContext(int userId, string clusterId, string operationName)
         {
-            if (!store.Exists(userId))
-                return StatusCode(404, new { message = $"No se encontraron credenciales para el usuario {userId}" });
-            return null;
+            var clusterConfig = _store.GetClusterWithUser(userId, clusterId);
+            
+            if (clusterConfig == null)
+            {
+                _audit.LogOperation(userId.ToString(), clusterId, $"{operationName}-{clusterId}", false, "Usuario o cluster no encontrado");
+                return (NotFound(new { message = "Usuario o cluster no encontrado" }), "", "");
+            }
+
+            var userName = clusterConfig.User?.Username ?? "Unknown";
+            var clusterName = clusterConfig.DisplayName ?? clusterId;
+
+            return (null, userName, clusterName);
         }
     }
 }

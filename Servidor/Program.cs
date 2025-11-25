@@ -4,8 +4,12 @@ using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using Servidor.KubeOrchestratorPlatform.Services.Audit;
 using Servidor.KubeOrchestratorPlatform.Services.Parser;
-using Servidor.KubeOrchestratorPlatform.Services.Store;
 using Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators;
+using Servidor.KubeOrchestratorPlatform.Database.Data;
+using Servidor.KubeOrchestratorPlatform.Services.Store;
+using Microsoft.EntityFrameworkCore;
+using Servidor.KubeOrchestratorPlatform.Services.Store.Repositories;
+using Servidor.KubeOrchestratorPlatform.Services.Store.Cache;
 
 namespace Servidor
 {
@@ -28,6 +32,18 @@ namespace Servidor
 
                 builder.Host.UseSerilog();
 
+                builder.Services.AddDbContext<AppDbContext>(options =>
+                    options.UseMySql(builder.Configuration.GetConnectionString("MySql"),
+                                     new MySqlServerVersion(new Version(8, 0, 44))));
+
+                builder.Services.AddScoped<IUserClusterRepository, UserClusterRepository>();
+                builder.Services.AddScoped<IUserClusterCache, UserClusterCache>();
+                builder.Services.AddScoped<IUserClusterStore, HybridUserClusterStore>();
+
+                builder.Services.AddScoped<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
+                builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
+
+
                 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
                 {
                     var redisConn = builder.Configuration.GetConnectionString("Redis")
@@ -37,12 +53,9 @@ namespace Servidor
                 });
 
                 builder.Services.AddControllers();
-                builder.Services.AddSingleton<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
                 builder.Services.AddSingleton<IAuditService, AuditService>();
                 builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
                 builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
-                builder.Services.AddSingleton<IUserClusterStore, RedisUserClusterStore>();
-                builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
 
                 builder.Services.AddEndpointsApiExplorer();
                 builder.Services.AddSwaggerGen();

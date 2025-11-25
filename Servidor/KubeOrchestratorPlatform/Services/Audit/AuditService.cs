@@ -8,20 +8,20 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Audit
             this.logger = logger;
         }
 
-        public void LogConnection(string userId, bool success, string? error = null)
+        public void LogConnection(string userName, string clusterName, bool success, string? error = null)
         {
             if (success)
-                logger.LogInformation("Conexión exitosa al cluster para usuario {UserId}", userId);
+                logger.LogInformation("Conexión exitosa al cluster para usuario {UserName} en el cluster {ClusterName}", userName, clusterName);
             else
-                logger.LogWarning("Intento de conexión fallido para usuario {UserId}. Error: {Error}", userId, error);
+                logger.LogWarning("Intento de conexión fallido para usuario {UserName} en cluster {ClusterName}. Error: {Error}", userName, clusterName, error);
         }
 
-        public void LogOperation(string userId, string operation, bool success, string? error = null)
+        public void LogOperation(string userName, string clusterName, string operation, bool success, string? error = null)
         {
             if (success)
-                logger.LogInformation("Usuario {UserId} ejecutó operación {Operation} correctamente", userId, operation);
+                logger.LogInformation("Usuario {UserName} ejecutó operación {Operation} en cluster {ClusterName} correctamente", userName, operation, clusterName);
             else
-                logger.LogError("Usuario {UserId} falló en operación {Operation}. Error: {Error}", userId, operation, error);
+                logger.LogError("Usuario {UserName} falló en operación {Operation} en cluster {ClusterName}. Error: {Error}", userName, operation, clusterName, error);
         }
     }
 }
