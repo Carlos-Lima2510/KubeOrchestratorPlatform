@@ -6,95 +6,94 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
 {
     public class UserClusterCache : IUserClusterCache
     {
-        private readonly IDatabase database;
-        private readonly string prefix = "usercluster:";
+        private readonly IDatabase _database;
+        private readonly string _prefix = "usercluster:";
 
         public UserClusterCache(IConnectionMultiplexer redis)
         {
-            database = redis.GetDatabase();
-        }
-        private string Key(int userId, string clusterId) => $"{prefix}{userId}:{clusterId}";
-        public bool Exists(int userId, string clusterId)
-        {
-            return database.KeyExists(Key(userId, clusterId));
+            _database = redis.GetDatabase();
         }
 
-        public ClusterCredentials? Get(int userId, string clusterId)
+        private string Key(int userId, string clusterId) => $"{_prefix}{userId}:{clusterId}";
+
+        public bool Exists(int userId, string clusterId)
+        {
+            return _database.KeyExists(Key(userId, clusterId));
+        }
+        public ConnectedCluster? Get(int userId, string clusterId)
         {
             try
             {
-                var value = database.StringGet(Key(userId, clusterId));
-                if (value.IsNullOrEmpty) return null;
+                var json = _database.StringGet(Key(userId, clusterId));
+                if (json.IsNullOrEmpty) return null;
+
+                var cacheModel = JsonSerializer.Deserialize<ClusterCacheModel>(json!);
                 
-                var options = new JsonSerializerOptions
+                if (cacheModel == null) return null;
+
+                return new ConnectedCluster
                 {
-                    ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
-                    PropertyNameCaseInsensitive = true
-                };
-                
-                // Deserializar el DTO y reconstruir ClusterCredentials
-                using var doc = JsonDocument.Parse(value!.ToString());
-                var root = doc.RootElement;
-                
-                return new ClusterCredentials
-                {
-                    Id = root.TryGetProperty("Id", out var id) ? id.GetInt32() : 0,
-                    CertificateAuthorityData = root.TryGetProperty("CertificateAuthorityData", out var ca) ? ca.GetString() : null,
-                    Token = root.TryGetProperty("Token", out var token) ? token.GetString() : null,
-                    ClientCertificateData = root.TryGetProperty("ClientCertificateData", out var cert) ? cert.GetString() : null,
-                    ClientKeyData = root.TryGetProperty("ClientKeyData", out var key) ? key.GetString() : null,
-                    AuthType = root.TryGetProperty("AuthType", out var auth) ? auth.GetString() : null,
-                    ConnectedClusterId = root.TryGetProperty("ConnectedClusterId", out var clusterIdProp) ? clusterIdProp.GetInt32() : 0
+                    UserId = userId,
+                    PublicClusterId = clusterId,
+                    
+                    ServerUrl = cacheModel.ServerUrl,     
+                    DisplayName = cacheModel.DisplayName,
+                    
+                    User = new User 
+                    { 
+                        Username = cacheModel.Username,
+                        Email = "",
+                        PasswordHash = ""
+                    },
+
+                    Credentials = new ClusterCredentials
+                    {
+                        Id = cacheModel.CredentialId,
+                        Token = cacheModel.Token,
+                        CertificateAuthorityData = cacheModel.CertificateAuthorityData,
+                        ClientCertificateData = cacheModel.ClientCertificateData,
+                        ClientKeyData = cacheModel.ClientKeyData,
+                        AuthType = cacheModel.AuthType
+                    }
                 };
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error al obtener cache Redis: {ex.Message}");
+                Console.WriteLine($"Error Redis Get: {ex.Message}");
                 return null;
             }
         }
-
-        public void Set(int userId, string clusterId, ClusterCredentials credentials)
+        public void Set(int userId, string clusterId, ConnectedCluster cluster)
         {
             try
             {
-                // Crear un DTO sin referencias circulares para el cache
-                var cacheDto = new
+                var cacheModel = new ClusterCacheModel
                 {
-                    credentials.Id,
-                    credentials.CertificateAuthorityData,
-                    credentials.Token,
-                    credentials.ClientCertificateData,
-                    credentials.ClientKeyData,
-                    credentials.AuthType,
-                    credentials.ConnectedClusterId
+                    ServerUrl = cluster.ServerUrl,
+                    DisplayName = cluster.DisplayName,
+                    Username = cluster.User?.Username ?? "Unknown", 
+
+                    CredentialId = cluster.Credentials?.Id ?? 0,
+                    Token = cluster.Credentials?.Token,
+                    CertificateAuthorityData = cluster.Credentials?.CertificateAuthorityData,
+                    ClientCertificateData = cluster.Credentials?.ClientCertificateData,
+                    ClientKeyData = cluster.Credentials?.ClientKeyData,
+                    AuthType = cluster.Credentials?.AuthType ?? "Token"
                 };
                 
-                var options = new JsonSerializerOptions
-                {
-                    ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
-                };
+                var json = JsonSerializer.Serialize(cacheModel);
                 
-                var json = JsonSerializer.Serialize(cacheDto, options);
-                database.StringSet(Key(userId, clusterId), json, TimeSpan.FromHours(12));
+                _database.StringSet(Key(userId, clusterId), json, TimeSpan.FromHours(12));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error al guardar cache Redis: {ex.Message}");
+                Console.WriteLine($"Error Redis Set: {ex.Message}");
             }
         }
 
         public void Remove(int userId, string clusterId)
         {
-            try
-            {
-                database.KeyDelete(Key(userId, clusterId));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error al eliminar cache Redis: {ex.Message}");
-            }
+            _database.KeyDelete(Key(userId, clusterId));
         }
-
     }
 }

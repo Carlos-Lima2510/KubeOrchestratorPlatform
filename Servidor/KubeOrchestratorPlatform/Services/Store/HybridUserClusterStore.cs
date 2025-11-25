@@ -14,37 +14,22 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store
             this.repository = repository;
             this.cache = cache;
         }
-
-        public bool Exists(int userId, string clusterId)
-        {
-            if (cache.Exists(userId, clusterId)) return true;
-            return repository.Exists(userId, clusterId);
-        }
-
-        public ClusterCredentials? Get(int userId, string clusterId)
-        {
-            var cached = cache.Get(userId, clusterId);
-            if (cached != null) return cached;
-
-            var config = repository.GetClusterConfiguration(userId, clusterId);
-            if (config != null)
-            {
-                cache.Set(userId, clusterId, config.Credentials);
-                return config.Credentials;
-            }
-
-            return null;
-        }
-
         public ConnectedCluster? GetClusterWithUser(int userId, string clusterId)
         {
-            return repository.GetClusterConfiguration(userId, clusterId);
-        }
+            var cached = cache.Get(userId, clusterId);
+            if (cached != null) 
+            {
+                return cached; 
+            }
 
-        public void Remove(int userId, string clusterId)
-        {
-            repository.RemoveClusterConfiguration(userId, clusterId);
-            cache.Remove(userId, clusterId);
+            var dbConfig = repository.GetClusterConfiguration(userId, clusterId);
+            
+            if (dbConfig != null)
+            {
+                cache.Set(userId, clusterId, dbConfig);
+            }
+
+            return dbConfig;
         }
         public void Save(int userId, string publicClusterId, ClusterCredentials credentials, string serverUrl, string displayName)
         {
@@ -61,19 +46,14 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store
                     IsActive = true,
                     Credentials = credentials
                 };
-
-                repository.SaveClusterConfiguration(config);
             }
             else
             {
                 config.ServerUrl = serverUrl;
                 config.DisplayName = displayName;
 
-                if (config.Credentials == null)
-                {
-                    config.Credentials = credentials;
-                }
-                else
+                if (config.Credentials == null) config.Credentials = credentials;
+                else 
                 {
                     config.Credentials.Token = credentials.Token;
                     config.Credentials.ClientCertificateData = credentials.ClientCertificateData;
@@ -81,11 +61,21 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store
                     config.Credentials.CertificateAuthorityData = credentials.CertificateAuthorityData;
                     config.Credentials.AuthType = credentials.AuthType;
                 }
-
-                repository.SaveClusterConfiguration(config); 
             }
 
-            cache.Set(userId, publicClusterId, config.Credentials);
+            repository.SaveClusterConfiguration(config);
+
+            cache.Set(userId, publicClusterId, config);
+        }
+        public void Remove(int userId, string clusterId)
+        {
+            repository.RemoveClusterConfiguration(userId, clusterId);
+            cache.Remove(userId, clusterId);
+        }
+        public bool Exists(int userId, string clusterId)
+        {
+            if (cache.Exists(userId, clusterId)) return true;
+            return repository.Exists(userId, clusterId);
         }
     }
 }
