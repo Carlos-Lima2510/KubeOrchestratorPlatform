@@ -1,6 +1,8 @@
+using Microsoft.VisualBasic;
 using Servidor.KubeOrchestratorPlatform.Models;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster.Cache;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster.Repositories;
+using Servidor.KubeOrchestratorPlatform.Services.Security;
 
 namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
 {
@@ -8,28 +10,38 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
     {
         private readonly IUserClusterRepository repository;
         private readonly IUserClusterCache cache;
+        private readonly IEncryptionService encryptionService;
 
-        public ClusterService(IUserClusterRepository repository, IUserClusterCache cache)
+        public ClusterService(IUserClusterRepository repository, IUserClusterCache cache, IEncryptionService encryptionService)
         {
             this.repository = repository;
             this.cache = cache;
+            this.encryptionService = encryptionService;
         }
         public ConnectedCluster? GetCluster(int userId, string clusterId)
         {
             var cached = cache.Get(userId, clusterId);
-            if (cached != null) 
+            if (cached != null)
             {
-                return cached; 
+                return cached;
             }
 
             var dbConfig = repository.GetClusterConfiguration(userId, clusterId);
-            
+
             if (dbConfig != null)
             {
+                DecryptCredentials(dbConfig.Credentials);
                 cache.Set(userId, clusterId, dbConfig);
             }
 
             return dbConfig;
+        }
+        private void DecryptCredentials(ClusterCredentials credentials)
+        {
+            if (credentials == null) return;
+            credentials.Token = encryptionService.Decrypt(credentials.Token!);
+            credentials.ClientCertificateData = encryptionService.Decrypt(credentials.ClientCertificateData!);
+            credentials.ClientKeyData = encryptionService.Decrypt(credentials.ClientKeyData!);
         }
         public void Save(int userId, string publicClusterId, ClusterCredentials credentials, string serverUrl, string displayName)
         {
@@ -53,7 +65,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
                 config.DisplayName = displayName;
 
                 if (config.Credentials == null) config.Credentials = credentials;
-                else 
+                else
                 {
                     config.Credentials.Token = credentials.Token;
                     config.Credentials.ClientCertificateData = credentials.ClientCertificateData;
@@ -63,9 +75,30 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
                 }
             }
 
+            var (Token, ClientCert, ClientKey, CAData) = EncryptCredentials(config);
+
             repository.SaveClusterConfiguration(config);
 
+            config.Credentials.Token = Token;
+            config.Credentials.ClientCertificateData = ClientCert;
+            config.Credentials.ClientKeyData = ClientKey;
+            config.Credentials.CertificateAuthorityData = CAData;
+
             cache.Set(userId, publicClusterId, config);
+        }
+        private (string? Token, string? ClientCert, string? ClientKey, string? CAData) EncryptCredentials(ConnectedCluster config)
+        {
+            var rawToken = config.Credentials.Token;
+            var rawCert = config.Credentials.ClientCertificateData;
+            var rawKey = config.Credentials.ClientKeyData;
+            var rawCA = config.Credentials.CertificateAuthorityData;
+
+            config.Credentials.Token = encryptionService.Encrypt(rawToken!);
+            config.Credentials.ClientCertificateData = encryptionService.Encrypt(rawCert!);
+            config.Credentials.ClientKeyData = encryptionService.Encrypt(rawKey!);
+            config.Credentials.CertificateAuthorityData = encryptionService.Encrypt(rawCA!);
+
+            return (rawToken, rawCert, rawKey, rawCA);
         }
         public void Remove(int userId, string clusterId)
         {

@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster.Repositories;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster.Cache;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster;
+using Servidor.KubeOrchestratorPlatform.Services.Security;
 
 namespace Servidor
 {
@@ -56,6 +57,7 @@ namespace Servidor
                 builder.Services.AddSingleton<IAuditService, AuditService>();
                 builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
                 builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
+                builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 
                 builder.Services.AddEndpointsApiExplorer();
                 builder.Services.AddSwaggerGen();
