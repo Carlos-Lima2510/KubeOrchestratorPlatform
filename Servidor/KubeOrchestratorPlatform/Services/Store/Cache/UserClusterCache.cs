@@ -27,7 +27,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
                 var json = database.StringGet(Key(userId, clusterId));
                 if (json.IsNullOrEmpty) return null;
 
-                var cacheModel = JsonSerializer.Deserialize<ClusterCache>(json!);
+                var cacheModel = JsonSerializer.Deserialize<CachedCluster>(json!);
                 
                 if (cacheModel == null) return null;
 
@@ -67,7 +67,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Store.Cache
         {
             try
             {
-                var cacheModel = new ClusterCache
+                var cacheModel = new CachedCluster
                 {
                     ServerUrl = cluster.ServerUrl,
                     DisplayName = cluster.DisplayName,
