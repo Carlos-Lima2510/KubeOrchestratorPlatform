@@ -1,35 +1,43 @@
 using k8s;
-using Servidor.KubeOrchestratorPlatform.Factories;
-using Servidor.KubeOrchestratorPlatform.Services.Store;
+using Servidor.KubeOrchestratorPlatform.Factories.Client;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster;
 using Servidor.KubeOrchestratorPlatform.Models;
 
 namespace Servidor.KubeOrchestratorPlatform.Services.Connection
 {
     public class KubernetesUserClientConnection : IKubernetesUserClientConnection
     {
-        private readonly IUserClusterStore store;
+        private readonly IClusterService store;
         private readonly IKubernetesClientFactory factory;
 
-        public KubernetesUserClientConnection(IUserClusterStore store, IKubernetesClientFactory factory)
+        public KubernetesUserClientConnection(IClusterService store, IKubernetesClientFactory factory)
         {
             this.store = store;
             this.factory = factory;
         }
 
-        public IKubernetes GetClient(string userId)
+        public IKubernetes GetClient(int userId, string clusterId)
         {
-            if (!store.Exists(userId))
-                throw new KeyNotFoundException($"No se encontraron credenciales para {userId}");
+            var clusterConfig = store.GetCluster(userId, clusterId);
 
-            var credentials = store.Get(userId);
+            if (clusterConfig == null)
+                throw new Exception($"El cluster {clusterId} no fue encontrado para el usuario {userId}");
+            
+            if (string.IsNullOrEmpty(clusterConfig.ServerUrl))
+                throw new Exception("La configuración del cluster no tiene una ServerUrl válida.");
+
+            if (clusterConfig.Credentials == null)
+                throw new Exception("El cluster existe pero no tiene credenciales asociadas.");
+
             return factory.CreateClient(new ParsedKubeConfig
             {
-                Server = credentials.Server,
-                CertificateAuthorityData = credentials.CertificateAuthorityData,
-                Token = credentials.Token,
-                ClientCertificateData = credentials.ClientCertificateData,
-                ClientKeyData = credentials.ClientKeyData,
-                AuthType = credentials.AuthType
+                Server = clusterConfig.ServerUrl, 
+
+                CertificateAuthorityData = clusterConfig.Credentials.CertificateAuthorityData,
+                Token = clusterConfig.Credentials.Token,
+                ClientCertificateData = clusterConfig.Credentials.ClientCertificateData,
+                ClientKeyData = clusterConfig.Credentials.ClientKeyData,
+                AuthType = clusterConfig.Credentials.AuthType
             });
         }
     }

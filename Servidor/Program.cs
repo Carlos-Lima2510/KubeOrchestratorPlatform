@@ -1,8 +1,15 @@
-
-using Servidor.KubeOrchestratorPlatform.Factories;
+using StackExchange.Redis;
+using Serilog;
+using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
+using Servidor.KubeOrchestratorPlatform.Services.Audit;
 using Servidor.KubeOrchestratorPlatform.Services.Parser;
-using Servidor.KubeOrchestratorPlatform.Services.Store;
+using Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators;
+using Servidor.KubeOrchestratorPlatform.Database.Data;
+using Microsoft.EntityFrameworkCore;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster.Repositories;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster.Cache;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster;
 
 namespace Servidor
 {
@@ -10,36 +17,70 @@ namespace Servidor
     {
         public static void Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Information()
+                .Enrich.FromLogContext()
+                .WriteTo.Console()
+                .WriteTo.File("Logs/orchestrator.log", rollingInterval: RollingInterval.Day)
+                .CreateLogger();
 
-            // Add services to the container.
-
-            builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
-            builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
-            builder.Services.AddSingleton<IUserClusterStore, InMemoryUserClusterStore>();
-            builder.Services.AddSingleton<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
-
-
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-
-            var app = builder.Build();
-
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            try
             {
-                app.UseSwagger();
-                app.UseSwaggerUI();
+                Log.Information("Iniciando la aplicación...");
+
+                var builder = WebApplication.CreateBuilder(args);
+
+                builder.Host.UseSerilog();
+
+                builder.Services.AddDbContext<AppDbContext>(options =>
+                    options.UseMySql(builder.Configuration.GetConnectionString("MySql"),
+                                     new MySqlServerVersion(new Version(8, 0, 44))));
+
+                builder.Services.AddScoped<IUserClusterRepository, UserClusterRepository>();
+                builder.Services.AddScoped<IUserClusterCache, UserClusterCache>();
+                builder.Services.AddScoped<IClusterService, ClusterService>();
+
+                builder.Services.AddScoped<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
+                builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
+
+
+                builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+                {
+                    var redisConn = builder.Configuration.GetConnectionString("Redis")
+                        ?? throw new Exception("No se encontró la cadena de conexión de Redis.");
+
+                    return ConnectionMultiplexer.Connect(redisConn);
+                });
+
+                builder.Services.AddControllers();
+                builder.Services.AddSingleton<IAuditService, AuditService>();
+                builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
+                builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
+
+                builder.Services.AddEndpointsApiExplorer();
+                builder.Services.AddSwaggerGen();
+
+                var app = builder.Build();
+
+                if (app.Environment.IsDevelopment())
+                {
+                    app.UseSwagger();
+                    app.UseSwaggerUI();
+                }
+
+                app.UseAuthorization();
+                app.MapControllers();
+
+                app.Run();
             }
-
-            app.UseAuthorization();
-
-
-            app.MapControllers();
-
-            app.Run();
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "La aplicación terminó inesperadamente");
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
         }
     }
 }
