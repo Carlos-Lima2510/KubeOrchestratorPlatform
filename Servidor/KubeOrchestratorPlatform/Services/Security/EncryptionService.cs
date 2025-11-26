@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 
 namespace Servidor.KubeOrchestratorPlatform.Services.Security
 {
@@ -17,7 +16,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Security
         }
         public string Encrypt(string plainText)
         {
-            if(string.IsNullOrEmpty(plainText)) return plainText;
+            if (string.IsNullOrEmpty(plainText)) return plainText;
 
             using var aes = Aes.Create();
             aes.Key = key;
@@ -35,18 +34,25 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Security
         }
         public string Decrypt(string cipherText)
         {
-            if (string.IsNullOrEmpty(cipherText)) return cipherText;
+            try
+            {
+                if (string.IsNullOrEmpty(cipherText)) return cipherText;
 
-            using var aes = Aes.Create();
-            aes.Key = key;
-            aes.IV = iv;
+                using var aes = Aes.Create();
+                aes.Key = key;
+                aes.IV = iv;
 
-            using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-            using var memoryStream = new MemoryStream(Convert.FromBase64String(cipherText));
-            using var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
-            using var streamReader = new StreamReader(cryptoStream);
+                using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+                using var memoryStream = new MemoryStream(Convert.FromBase64String(cipherText));
+                using var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
+                using var streamReader = new StreamReader(cryptoStream);
 
-            return streamReader.ReadToEnd();
+                return streamReader.ReadToEnd();
+            }
+            catch (CryptographicException)
+            {
+                throw new InvalidOperationException("Error de seguridad: No se pudieron desencriptar los datos.");
+            }
         }
 
     }
