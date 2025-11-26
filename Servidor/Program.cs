@@ -6,10 +6,10 @@ using Servidor.KubeOrchestratorPlatform.Services.Audit;
 using Servidor.KubeOrchestratorPlatform.Services.Parser;
 using Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators;
 using Servidor.KubeOrchestratorPlatform.Database.Data;
-using Servidor.KubeOrchestratorPlatform.Services.Store;
 using Microsoft.EntityFrameworkCore;
-using Servidor.KubeOrchestratorPlatform.Services.Store.Repositories;
-using Servidor.KubeOrchestratorPlatform.Services.Store.Cache;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster.Repositories;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster.Cache;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster;
 
 namespace Servidor
 {
@@ -38,7 +38,7 @@ namespace Servidor
 
                 builder.Services.AddScoped<IUserClusterRepository, UserClusterRepository>();
                 builder.Services.AddScoped<IUserClusterCache, UserClusterCache>();
-                builder.Services.AddScoped<IUserClusterStore, HybridUserClusterStore>();
+                builder.Services.AddScoped<IClusterService, ClusterService>();
 
                 builder.Services.AddScoped<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
                 builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();

@@ -1,16 +1,16 @@
 using k8s;
 using Servidor.KubeOrchestratorPlatform.Factories.Client;
-using Servidor.KubeOrchestratorPlatform.Services.Store;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster;
 using Servidor.KubeOrchestratorPlatform.Models;
 
 namespace Servidor.KubeOrchestratorPlatform.Services.Connection
 {
     public class KubernetesUserClientConnection : IKubernetesUserClientConnection
     {
-        private readonly IUserClusterStore store;
+        private readonly IClusterService store;
         private readonly IKubernetesClientFactory factory;
 
-        public KubernetesUserClientConnection(IUserClusterStore store, IKubernetesClientFactory factory)
+        public KubernetesUserClientConnection(IClusterService store, IKubernetesClientFactory factory)
         {
             this.store = store;
             this.factory = factory;
@@ -18,7 +18,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Connection
 
         public IKubernetes GetClient(int userId, string clusterId)
         {
-            var clusterConfig = store.GetClusterWithUser(userId, clusterId);
+            var clusterConfig = store.GetCluster(userId, clusterId);
 
             if (clusterConfig == null)
                 throw new Exception($"El cluster {clusterId} no fue encontrado para el usuario {userId}");

@@ -1,6 +1,6 @@
 using Servidor.KubeOrchestratorPlatform.Models;
 
-namespace Servidor.KubeOrchestratorPlatform.Services.Store.Repositories
+namespace Servidor.KubeOrchestratorPlatform.Services.Cluster.Repositories
 {
     public interface IUserClusterRepository
     {

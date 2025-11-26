@@ -1,6 +1,6 @@
 using k8s;
 using Servidor.KubeOrchestratorPlatform.Services.Audit;
-using Servidor.KubeOrchestratorPlatform.Services.Store;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster;
 
 namespace Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators
 {
@@ -8,9 +8,9 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators
     {
         private readonly IKubernetesUserClientConnection innerClass;
         private readonly IAuditService auditService;
-        private readonly IUserClusterStore store;
+        private readonly IClusterService store;
 
-        public LoggingKubernetesUserClientConnection(IKubernetesUserClientConnection innerClass, IAuditService auditService, IUserClusterStore store)
+        public LoggingKubernetesUserClientConnection(IKubernetesUserClientConnection innerClass, IAuditService auditService, IClusterService store)
         {
             this.innerClass = innerClass;
             this.auditService = auditService;
@@ -19,7 +19,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators
 
         public IKubernetes GetClient(int userId, string clusterId)
         {
-            var clusterConfig = store.GetClusterWithUser(userId, clusterId);
+            var clusterConfig = store.GetCluster(userId, clusterId);
             var userName = clusterConfig?.User?.Username ?? "";
             var clusterName = clusterConfig?.DisplayName ?? clusterId;
 

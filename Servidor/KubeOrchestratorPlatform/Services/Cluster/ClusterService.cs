@@ -1,20 +1,20 @@
 using Servidor.KubeOrchestratorPlatform.Models;
-using Servidor.KubeOrchestratorPlatform.Services.Store.Cache;
-using Servidor.KubeOrchestratorPlatform.Services.Store.Repositories;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster.Cache;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster.Repositories;
 
-namespace Servidor.KubeOrchestratorPlatform.Services.Store
+namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
 {
-    public class HybridUserClusterStore : IUserClusterStore
+    public class ClusterService : IClusterService
     {
         private readonly IUserClusterRepository repository;
         private readonly IUserClusterCache cache;
 
-        public HybridUserClusterStore(IUserClusterRepository repository, IUserClusterCache cache)
+        public ClusterService(IUserClusterRepository repository, IUserClusterCache cache)
         {
             this.repository = repository;
             this.cache = cache;
         }
-        public ConnectedCluster? GetClusterWithUser(int userId, string clusterId)
+        public ConnectedCluster? GetCluster(int userId, string clusterId)
         {
             var cached = cache.Get(userId, clusterId);
             if (cached != null) 
