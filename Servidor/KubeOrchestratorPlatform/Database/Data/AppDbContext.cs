@@ -42,6 +42,5 @@ namespace Servidor.KubeOrchestratorPlatform.Database.Data
                 .HasIndex(c => new { c.UserId, c.PublicClusterId, c.Context })
                 .IsUnique();
         }
-
     }
 }

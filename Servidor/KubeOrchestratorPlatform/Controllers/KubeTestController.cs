@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models;
 using Servidor.KubeOrchestratorPlatform.Services.Parser;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
-using Servidor.KubeOrchestratorPlatform.Services.Store;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster;
 using Servidor.KubeOrchestratorPlatform.Services.Audit;
 
 namespace Servidor.KubeOrchestratorPlatform.Controllers
@@ -13,13 +13,13 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
     public class KubeTestController : ControllerBase
     {
         private readonly IKubeConfigParser _parser;
-        private readonly IUserClusterStore _store;
+        private readonly IClusterService _store;
         private readonly IKubernetesUserClientConnection _clientConnection;
         private readonly IAuditService _audit;
 
         public KubeTestController(
             IKubeConfigParser parser,
-            IUserClusterStore store,
+            IClusterService store,
             IKubernetesUserClientConnection clientConnection,
             IAuditService audit)
         {
@@ -175,7 +175,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         }
         private (IActionResult? ErrorResult, string UserName, string ClusterName) ValidateAndGetContext(int userId, string clusterId, string operationName)
         {
-            var clusterConfig = _store.GetClusterWithUser(userId, clusterId);
+            var clusterConfig = _store.GetCluster(userId, clusterId);
             
             if (clusterConfig == null)
             {
