@@ -1,6 +1,6 @@
 namespace Servidor.KubeOrchestratorPlatform.Models
 {
-    public class ClusterCache
+    public class CachedCluster
     {
         public string Username { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
