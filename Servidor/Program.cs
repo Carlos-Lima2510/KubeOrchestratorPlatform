@@ -1,4 +1,5 @@
 using StackExchange.Redis;
+using DotNetEnv;
 using Serilog;
 using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
@@ -18,6 +19,8 @@ namespace Servidor
     {
         public static void Main(string[] args)
         {
+            Env.Load();
+            
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .Enrich.FromLogContext()
