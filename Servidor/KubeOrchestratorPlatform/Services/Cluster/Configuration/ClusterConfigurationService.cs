@@ -1,0 +1,88 @@
+using Servidor.KubeOrchestratorPlatform.Models;
+using Servidor.KubeOrchestratorPlatform.Responses;
+using Servidor.KubeOrchestratorPlatform.Services.Audit;
+using Servidor.KubeOrchestratorPlatform.Services.Parser;
+
+namespace Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration
+{
+    public class ClusterConfigurationService : IClusterConfigurationService
+    {
+        private readonly IClusterService clusterService;
+        private readonly IKubeConfigParser parserService;
+        private readonly IAuditService auditService;
+
+        public ClusterConfigurationService(
+            IClusterService clusterService,
+            IKubeConfigParser parserService,
+            IAuditService auditService)
+        {
+            this.clusterService = clusterService;
+            this.parserService = parserService;
+            this.auditService = auditService;
+        }
+        public Task DeleteConfigurationAsync(int userId, string clusterId)
+        {
+            var (userName, clusterName) = clusterService.GetClusterContext(userId, clusterId);
+
+            if (clusterName == clusterId && !clusterService.Exists(userId, clusterId))
+            {
+                throw new KeyNotFoundException("La configuración no existe.");
+            }
+
+            try
+            {
+                clusterService.Remove(userId, clusterId);
+
+                auditService.LogOperation(userName, clusterName, "DeleteClusterConfig", true);
+            }
+            catch (Exception ex)
+            {
+                auditService.LogOperation(userName, clusterName, "DeleteClusterConfig", false, ex.Message);
+                throw;
+            }
+
+            return Task.CompletedTask;
+        }
+        public async Task<ClusterConfigurationResponse> UploadKubeConfigAsync(int userId, string clusterId, Stream kubeConfigStream)
+        {
+            try
+            {
+                using var reader = new StreamReader(kubeConfigStream);
+                var yamlContent = await reader.ReadToEndAsync();
+
+                if (string.IsNullOrWhiteSpace(yamlContent))
+                    throw new ArgumentException("El archivo de configuración está vacío.");
+
+                var parsed = parserService.Parse(yamlContent);
+
+                var creds = new ClusterCredentials
+                {
+                    CertificateAuthorityData = parsed.CertificateAuthorityData,
+                    Token = parsed.Token,
+                    ClientCertificateData = parsed.ClientCertificateData,
+                    ClientKeyData = parsed.ClientKeyData,
+                    AuthType = parsed.AuthType
+                };
+
+                var displayName = parsed.ClusterName ?? clusterId;
+                var k8sUser = parsed.UserName ?? "UnknownK8sUser";
+
+                clusterService.Save(userId, clusterId, creds, parsed.Server, displayName);
+
+                auditService.LogOperation(k8sUser, displayName, "UploadKubeConfig", true);
+
+                return new ClusterConfigurationResponse
+                {
+                    ClusterName = displayName,
+                    ServerUrl = parsed.Server,
+                    Message = "Configuración cargada correctamente."
+                };
+            }
+            catch (Exception ex)
+            {
+                auditService.LogOperation($"User:{userId}", clusterId, "UploadKubeConfig", false, ex.Message);
+                throw; 
+            }
+        }
+    }
+}

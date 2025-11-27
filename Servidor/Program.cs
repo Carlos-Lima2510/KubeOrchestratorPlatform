@@ -1,17 +1,20 @@
 using StackExchange.Redis;
 using DotNetEnv;
 using Serilog;
+using Microsoft.EntityFrameworkCore;
 using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using Servidor.KubeOrchestratorPlatform.Services.Audit;
 using Servidor.KubeOrchestratorPlatform.Services.Parser;
 using Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators;
 using Servidor.KubeOrchestratorPlatform.Database.Data;
-using Microsoft.EntityFrameworkCore;
 using Servidor.KubeOrchestratorPlatform.Repositories;
 using Servidor.KubeOrchestratorPlatform.Cache;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster;
 using Servidor.KubeOrchestratorPlatform.Services.Security;
+using Servidor.KubeOrchestratorPlatform.Services.Namespace;
+using Servidor.KubeOrchestratorPlatform.Services.Auth;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration;
 
 namespace Servidor
 {
@@ -43,6 +46,9 @@ namespace Servidor
                 builder.Services.AddScoped<IUserClusterRepository, UserClusterRepository>();
                 builder.Services.AddScoped<IUserClusterCache, UserClusterCache>();
                 builder.Services.AddScoped<IClusterService, ClusterService>();
+                builder.Services.AddScoped<IClusterConfigurationService, ClusterConfigurationService>();
+                builder.Services.AddScoped<INamespaceService, NamespaceService>();
+                builder.Services.AddScoped<ICurrentUserService, DevCurrentUserService>();
 
                 builder.Services.AddScoped<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
                 builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
