@@ -13,7 +13,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Security
             ?? throw new InvalidOperationException("No se ha definido 'Encryption:CurrentVersion' en la configuración.");
         public string Encrypt(string plainText)
         {
-            return EncryptWithVersion(plainText, CurrentVersion);
+            return Encrypt(plainText, CurrentVersion);
         }
         public string Decrypt(string cipherText, string version)
         {
@@ -41,7 +41,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Security
                 throw new InvalidOperationException("Error de seguridad: No se pudieron desencriptar los datos.");
             }
         }
-        private string EncryptWithVersion(string plainText, string version)
+        private string Encrypt(string plainText, string version)
         {
             if (string.IsNullOrEmpty(plainText)) return plainText;
 
