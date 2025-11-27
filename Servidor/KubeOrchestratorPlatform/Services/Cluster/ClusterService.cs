@@ -115,5 +115,17 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
             if (cache.Exists(userId, clusterId)) return true;
             return repository.Exists(userId, clusterId);
         }
+        public (string UserName, string ClusterName) GetClusterContext(int userId, string clusterId)
+        {
+            if (cache.Exists(userId, clusterId))
+            {
+                var cached = cache.Get(userId, clusterId);
+                return (cached?.User?.Username ?? "Unknown", cached?.DisplayName ?? clusterId);
+            }
+
+            var dbNames = repository.GetClusterNames(userId, clusterId);
+
+            return (dbNames.UserName ?? "Unknown", dbNames.ClusterName ?? clusterId);
+        }
     }
 }

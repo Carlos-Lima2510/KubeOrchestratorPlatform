@@ -8,5 +8,6 @@ namespace Servidor.KubeOrchestratorPlatform.Repositories
         ConnectedCluster? GetClusterConfiguration(int userId, string clusterId);
         void RemoveClusterConfiguration(int userId, string clusterId);
         bool Exists(int userId, string clusterId);
+        (string? UserName, string? ClusterName) GetClusterNames(int userId, string clusterId);
     }
 }

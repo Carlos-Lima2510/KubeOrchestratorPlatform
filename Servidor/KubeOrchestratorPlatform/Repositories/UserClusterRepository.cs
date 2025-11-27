@@ -83,5 +83,18 @@ namespace Servidor.KubeOrchestratorPlatform.Repositories
                 throw new InvalidOperationException("Error inesperado al guardar la configuración del cluster", ex);
             }
         }
+        public (string? UserName, string? ClusterName) GetClusterNames(int userId, string clusterId)
+        {
+            var result = database.ConnectedClusters
+                .Where(c => c.UserId == userId && c.PublicClusterId == clusterId)
+                .Select(c => new
+                {
+                    UserName = c.User.Username,
+                    ClusterName = c.DisplayName
+                })
+                .FirstOrDefault();
+
+            return (result?.UserName, result?.ClusterName);
+        }
     }
 }
