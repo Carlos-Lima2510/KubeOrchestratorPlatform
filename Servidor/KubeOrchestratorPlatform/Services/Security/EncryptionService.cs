@@ -23,8 +23,6 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Security
 
             try
             {
-                
-
                 using var aes = Aes.Create();
                 aes.Key = key;
                 aes.IV = iv;
