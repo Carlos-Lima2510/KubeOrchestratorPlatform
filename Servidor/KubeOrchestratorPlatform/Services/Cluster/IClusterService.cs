@@ -8,5 +8,6 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
         ConnectedCluster? GetCluster(int userId, string clusterId);
         bool Exists(int userId, string clusterId);
         void Remove(int userId, string clusterId);
+        (string UserName, string ClusterName) GetClusterContext(int userId, string clusterId);
     }
 }
