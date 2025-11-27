@@ -1,4 +1,5 @@
 using StackExchange.Redis;
+using DotNetEnv;
 using Serilog;
 using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
@@ -7,9 +8,10 @@ using Servidor.KubeOrchestratorPlatform.Services.Parser;
 using Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators;
 using Servidor.KubeOrchestratorPlatform.Database.Data;
 using Microsoft.EntityFrameworkCore;
-using Servidor.KubeOrchestratorPlatform.Services.Cluster.Repositories;
-using Servidor.KubeOrchestratorPlatform.Services.Cluster.Cache;
+using Servidor.KubeOrchestratorPlatform.Repositories;
+using Servidor.KubeOrchestratorPlatform.Cache;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster;
+using Servidor.KubeOrchestratorPlatform.Services.Security;
 
 namespace Servidor
 {
@@ -17,6 +19,8 @@ namespace Servidor
     {
         public static void Main(string[] args)
         {
+            Env.Load();
+            
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .Enrich.FromLogContext()
@@ -56,6 +60,7 @@ namespace Servidor
                 builder.Services.AddSingleton<IAuditService, AuditService>();
                 builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
                 builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
+                builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 
                 builder.Services.AddEndpointsApiExplorer();
                 builder.Services.AddSwaggerGen();

@@ -1,6 +1,6 @@
 using Servidor.KubeOrchestratorPlatform.Models;
 
-namespace Servidor.KubeOrchestratorPlatform.Services.Cluster.Cache
+namespace Servidor.KubeOrchestratorPlatform.Cache
 {
     public interface IUserClusterCache
     {
