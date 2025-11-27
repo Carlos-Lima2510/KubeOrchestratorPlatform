@@ -42,6 +42,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
             credentials.Token = encryptionService.Decrypt(credentials.Token!, version);
             credentials.ClientCertificateData = encryptionService.Decrypt(credentials.ClientCertificateData!, version);
             credentials.ClientKeyData = encryptionService.Decrypt(credentials.ClientKeyData!, version);
+            credentials.CertificateAuthorityData = encryptionService.Decrypt(credentials.CertificateAuthorityData!, version);
         }
         public void Save(int userId, string publicClusterId, ClusterCredentials credentials, string serverUrl, string displayName)
         {
