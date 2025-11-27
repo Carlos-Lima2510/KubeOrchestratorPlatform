@@ -2,7 +2,7 @@ using System.Text.Json;
 using StackExchange.Redis;
 using Servidor.KubeOrchestratorPlatform.Models;
 
-namespace Servidor.KubeOrchestratorPlatform.Services.Cluster.Cache
+namespace Servidor.KubeOrchestratorPlatform.Cache
 {
     public class UserClusterCache : IUserClusterCache
     {

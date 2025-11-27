@@ -1,7 +1,7 @@
 using Microsoft.VisualBasic;
 using Servidor.KubeOrchestratorPlatform.Models;
-using Servidor.KubeOrchestratorPlatform.Services.Cluster.Cache;
-using Servidor.KubeOrchestratorPlatform.Services.Cluster.Repositories;
+using Servidor.KubeOrchestratorPlatform.Cache;
+using Servidor.KubeOrchestratorPlatform.Repositories;
 using Servidor.KubeOrchestratorPlatform.Services.Security;
 
 namespace Servidor.KubeOrchestratorPlatform.Services.Cluster

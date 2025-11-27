@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Servidor.KubeOrchestratorPlatform.Database.Data;
 using Servidor.KubeOrchestratorPlatform.Models;
 
-namespace Servidor.KubeOrchestratorPlatform.Services.Cluster.Repositories
+namespace Servidor.KubeOrchestratorPlatform.Repositories
 {
     public class UserClusterRepository : IUserClusterRepository
     {

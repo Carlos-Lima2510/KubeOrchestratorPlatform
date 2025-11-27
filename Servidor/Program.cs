@@ -8,8 +8,8 @@ using Servidor.KubeOrchestratorPlatform.Services.Parser;
 using Servidor.KubeOrchestratorPlatform.Services.Connection.Decorators;
 using Servidor.KubeOrchestratorPlatform.Database.Data;
 using Microsoft.EntityFrameworkCore;
-using Servidor.KubeOrchestratorPlatform.Services.Cluster.Repositories;
-using Servidor.KubeOrchestratorPlatform.Services.Cluster.Cache;
+using Servidor.KubeOrchestratorPlatform.Repositories;
+using Servidor.KubeOrchestratorPlatform.Cache;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster;
 using Servidor.KubeOrchestratorPlatform.Services.Security;
 
