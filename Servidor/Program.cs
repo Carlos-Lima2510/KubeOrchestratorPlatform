@@ -14,6 +14,7 @@ using Servidor.KubeOrchestratorPlatform.Services.Cluster;
 using Servidor.KubeOrchestratorPlatform.Services.Security;
 using Servidor.KubeOrchestratorPlatform.Services.Namespace;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
+using Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration;
 
 namespace Servidor
 {
@@ -45,6 +46,7 @@ namespace Servidor
                 builder.Services.AddScoped<IUserClusterRepository, UserClusterRepository>();
                 builder.Services.AddScoped<IUserClusterCache, UserClusterCache>();
                 builder.Services.AddScoped<IClusterService, ClusterService>();
+                builder.Services.AddScoped<IClusterConfigurationService, ClusterConfigurationService>();
                 builder.Services.AddScoped<INamespaceService, NamespaceService>();
                 builder.Services.AddScoped<ICurrentUserService, DevCurrentUserService>();
 
