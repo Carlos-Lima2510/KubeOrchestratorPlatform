@@ -30,22 +30,24 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
 
             if (dbConfig != null)
             {
-                DecryptCredentials(dbConfig.Credentials);
+                DecryptCredentials(dbConfig.Credentials, dbConfig.EncryptionVersion);
                 cache.Set(userId, clusterId, dbConfig);
             }
 
             return dbConfig;
         }
-        private void DecryptCredentials(ClusterCredentials credentials)
+        private void DecryptCredentials(ClusterCredentials credentials, string version)
         {
             if (credentials == null) return;
-            credentials.Token = encryptionService.Decrypt(credentials.Token!);
-            credentials.ClientCertificateData = encryptionService.Decrypt(credentials.ClientCertificateData!);
-            credentials.ClientKeyData = encryptionService.Decrypt(credentials.ClientKeyData!);
+            credentials.Token = encryptionService.Decrypt(credentials.Token!, version);
+            credentials.ClientCertificateData = encryptionService.Decrypt(credentials.ClientCertificateData!, version);
+            credentials.ClientKeyData = encryptionService.Decrypt(credentials.ClientKeyData!, version);
         }
         public void Save(int userId, string publicClusterId, ClusterCredentials credentials, string serverUrl, string displayName)
         {
             var config = repository.GetClusterConfiguration(userId, publicClusterId);
+
+            var versionToUse = encryptionService.CurrentVersion;
 
             if (config == null)
             {
@@ -56,6 +58,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
                     ServerUrl = serverUrl,
                     DisplayName = displayName,
                     IsActive = true,
+                    EncryptionVersion = versionToUse,
                     Credentials = credentials
                 };
             }
@@ -63,6 +66,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster
             {
                 config.ServerUrl = serverUrl;
                 config.DisplayName = displayName;
+                config.EncryptionVersion = versionToUse;
 
                 if (config.Credentials == null) config.Credentials = credentials;
                 else
