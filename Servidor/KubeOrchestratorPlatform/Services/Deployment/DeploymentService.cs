@@ -37,7 +37,14 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
             var client = _connection.GetClient(userId, clusterId);
             try
             {
-                return await client.AppsV1.ReadNamespacedDeploymentAsync(name, namespaceName);
+                var deployment = await client.AppsV1.ReadNamespacedDeploymentAsync(name, namespaceName);
+
+                if (deployment?.Metadata != null)
+                {
+                    deployment.Metadata.ManagedFields = null;
+                }
+
+                return deployment;
             }
             catch (k8s.Autorest.HttpOperationException ex) when (ex.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
