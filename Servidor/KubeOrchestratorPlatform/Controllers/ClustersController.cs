@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
-using Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration; 
+using Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs;
 
 namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
@@ -20,16 +21,16 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         }
 
         [HttpPost("{clusterId}/config")]
-        public async Task<IActionResult> UploadKubeConfig(string clusterId, [FromForm] IFormFile file)
+        public async Task<IActionResult> UploadKubeConfig(string clusterId, [FromForm] KubeConfigDTO kubeConfig)
         {
-            if (file == null || file.Length == 0)
+            if (kubeConfig.File == null || kubeConfig.File.Length == 0)
                 return BadRequest("El archivo kubeconfig es obligatorio.");
 
             try
             {
                 var userId = currentUserService.UserId;
 
-                using var stream = file.OpenReadStream();
+                using var stream = kubeConfig.File.OpenReadStream();
                 
                 var result = await configurationService.UploadKubeConfigAsync(userId, clusterId, stream);
 
