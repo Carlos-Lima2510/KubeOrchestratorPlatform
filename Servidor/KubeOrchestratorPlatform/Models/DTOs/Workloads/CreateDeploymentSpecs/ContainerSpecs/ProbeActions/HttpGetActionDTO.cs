@@ -1,6 +1,6 @@
 namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.CreateDeploymentSpecs.ContainerSpecs.ProbeActions
 {
-    public class HttpGetActionDto
+    public class HttpGetActionDTO
     {
         public string Path { get; set; } = "/healthz";
         public int Port { get; set; } = 80;
