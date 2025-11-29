@@ -1,4 +1,4 @@
-namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.CreateDeploymentSpecs.ContainerSpecs.ProbeActions
+namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments.CreateDeploymentSpecs.ContainerSpecs.ProbeActions
 {
     public class HttpGetActionDTO
     {

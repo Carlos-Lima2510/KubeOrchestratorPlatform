@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.CreateDeploymentSpecs
+namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments.CreateDeploymentSpecs
 {
     public class DeploymentStrategyDTO
     {
