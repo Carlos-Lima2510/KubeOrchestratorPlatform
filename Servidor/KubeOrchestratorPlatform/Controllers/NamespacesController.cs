@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Servidor.KubeOrchestratorPlatform.Requests;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
 using Servidor.KubeOrchestratorPlatform.Services.Namespace;
 
@@ -56,7 +56,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(string clusterId, [FromBody] CreateNamespaceRequest request)
+        public async Task<IActionResult> Create(string clusterId, [FromBody] NamespaceDTO request)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
