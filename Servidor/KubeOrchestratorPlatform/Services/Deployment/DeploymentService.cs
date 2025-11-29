@@ -11,30 +11,30 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
 {
     public class DeploymentService : IDeploymentService
     {
-        private readonly IKubernetesUserClientConnection _connection;
-        private readonly IClusterService _clusterStore;
-        private readonly IAuditService _audit;
+        private readonly IKubernetesUserClientConnection clientConnection;
+        private readonly IClusterService clusterService;
+        private readonly IAuditService auditService;
 
         public DeploymentService(
             IKubernetesUserClientConnection connection,
             IClusterService clusterStore,
             IAuditService audit)
         {
-            _connection = connection;
-            _clusterStore = clusterStore;
-            _audit = audit;
+            clientConnection = connection;
+            clusterService = clusterStore;
+            auditService = audit;
         }
 
         public async Task<IEnumerable<V1Deployment>> GetAllAsync(int userId, string clusterId, string namespaceName)
         {
-            var client = _connection.GetClient(userId, clusterId);
+            var client = clientConnection.GetClient(userId, clusterId);
             var list = await client.AppsV1.ListNamespacedDeploymentAsync(namespaceName);
             return list.Items;
         }
 
         public async Task<V1Deployment?> GetByNameAsync(int userId, string clusterId, string namespaceName, string name)
         {
-            var client = _connection.GetClient(userId, clusterId);
+            var client = clientConnection.GetClient(userId, clusterId);
             try
             {
                 var deployment = await client.AppsV1.ReadNamespacedDeploymentAsync(name, namespaceName);
@@ -54,30 +54,28 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
 
         public async Task CreateAsync(int userId, string clusterId, CreateDeploymentDTO dto)
         {
-            var (userName, clusterName) = _clusterStore.GetClusterContext(userId, clusterId);
+            var (userName, clusterName) = clusterService.GetClusterContext(userId, clusterId);
 
             try
             {
-                var client = _connection.GetClient(userId, clusterId);
+                var client = clientConnection.GetClient(userId, clusterId);
 
                 var deployment = BuildDeploymentObject(dto);
 
                 await client.AppsV1.CreateNamespacedDeploymentAsync(deployment, dto.Namespace);
 
-                _audit.LogOperation(userName, clusterName, $"CreateDeployment: {dto.Name}", true);
+                auditService.LogOperation(userName, clusterName, $"CreateDeployment: {dto.Name}", true);
             }
             catch (Exception ex)
             {
-                _audit.LogOperation(userName, clusterName, $"CreateDeployment: {dto.Name}", false, ex.Message);
+                auditService.LogOperation(userName, clusterName, $"CreateDeployment: {dto.Name}", false, ex.Message);
                 throw;
             }
         }
         private V1Deployment BuildDeploymentObject(CreateDeploymentDTO dto)
         {
-            // Validamos/Preparamos etiquetas
             var matchLabels = new Dictionary<string, string> { { "app", dto.Name } };
 
-            // Fusionamos las etiquetas del usuario con las nuestras de gestión
             var metadataLabels = new Dictionary<string, string>(dto.Labels)
             {
                 { "app", dto.Name },
@@ -108,11 +106,9 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
                             NodeSelector = dto.NodeSelector.Count > 0 ? dto.NodeSelector : null,
                             ImagePullSecrets = dto.ImagePullSecrets.Select(x => new V1LocalObjectReference()).ToList(),
 
-                            // Mapeo de Contenedores e InitContainers
                             InitContainers = dto.InitContainers.Select(MapContainer).ToList(),
                             Containers = dto.Containers.Select(MapContainer).ToList(),
 
-                            // Mapeo de Volúmenes
                             Volumes = dto.Volumes.Select(MapVolume).ToList()
                         }
                     }
@@ -143,7 +139,6 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
                 Command = dto.Command.Any() ? dto.Command : null,
                 Args = dto.Args.Any() ? dto.Args : null,
 
-                // Mapeo de Puertos
                 Ports = dto.Ports.Select(p => new V1ContainerPort
                 {
                     Name = p.Name,
@@ -153,23 +148,19 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
                     Protocol = p.Protocol
                 }).ToList(),
 
-                // Mapeo de Variables de Entorno (Directas + Referencias)
                 Env = MapEnvVars(dto.Environment),
                 EnvFrom = dto.EnvFrom.Select(MapEnvFrom).ToList(),
 
-                // Mapeo de Recursos (CPU/RAM)
                 Resources = new V1ResourceRequirements
                 {
                     Requests = ConvertToResourceQuantity(dto.Resources.Requests),
                     Limits = ConvertToResourceQuantity(dto.Resources.Limits)
                 },
 
-                // Probes (Salud)
                 LivenessProbe = MapProbe(dto.LivenessProbe),
                 ReadinessProbe = MapProbe(dto.ReadinessProbe),
                 StartupProbe = MapProbe(dto.StartupProbe),
 
-                // Seguridad
                 SecurityContext = dto.SecurityContext != null ? new V1SecurityContext
                 {
                     Privileged = dto.SecurityContext.Privileged,
@@ -178,7 +169,6 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
                     RunAsGroup = dto.SecurityContext.RunAsGroup != null ? (long)dto.SecurityContext.RunAsGroup : null
                 } : null,
 
-                // Montajes
                 VolumeMounts = dto.VolumeMounts.Select(vm => new V1VolumeMount
                 {
                     Name = vm.Name,
@@ -192,7 +182,6 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
         {
             var vol = new V1Volume { Name = dto.Name };
 
-            // Aquí validamos tu modelo de 'Type' vs 'SourceName'
             switch (dto.Type)
             {
                 case "EmptyDir":
@@ -274,18 +263,18 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
         }
         public async Task DeleteAsync(int userId, string clusterId, string namespaceName, string name)
         {
-            var (userName, clusterName) = _clusterStore.GetClusterContext(userId, clusterId);
+            var (userName, clusterName) = clusterService.GetClusterContext(userId, clusterId);
 
             try
             {
-                var client = _connection.GetClient(userId, clusterId);
+                var client = clientConnection.GetClient(userId, clusterId);
                 await client.AppsV1.DeleteNamespacedDeploymentAsync(name, namespaceName);
                 
-                _audit.LogOperation(userName, clusterName, $"DeleteDeployment: {name}", true);
+                auditService.LogOperation(userName, clusterName, $"DeleteDeployment: {name}", true);
             }
             catch (Exception ex)
             {
-                _audit.LogOperation(userName, clusterName, $"DeleteDeployment: {name}", false, ex.Message);
+                auditService.LogOperation(userName, clusterName, $"DeleteDeployment: {name}", false, ex.Message);
                 throw;
             }
         }
