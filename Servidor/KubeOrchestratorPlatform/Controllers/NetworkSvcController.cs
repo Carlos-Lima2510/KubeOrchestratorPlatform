@@ -19,9 +19,6 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             _currentUser = currentUser;
         }
 
-        /// <summary>
-        /// Obtiene todos los servicios en un namespace.
-        /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetAll(string clusterId, [FromQuery] string @namespace = "default")
         {
@@ -30,14 +27,12 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
                 var userId = _currentUser.UserId;
                 var services = await _service.GetAllAsync(userId, clusterId, @namespace);
 
-                // Proyección ligera para la tabla del frontend
                 var result = services.Select(s => new
                 {
                     Name = s.Metadata.Name,
                     Namespace = s.Metadata.NamespaceProperty,
                     Type = s.Spec.Type,
                     ClusterIP = s.Spec.ClusterIP,
-                    // Mostramos puertos como "80:30080/TCP"
                     Ports = s.Spec.Ports?.Select(p => $"{p.Port}:{p.NodePort}/{p.Protocol}") ?? Enumerable.Empty<string>(),
                     ExternalIP = s.Status.LoadBalancer?.Ingress?.FirstOrDefault()?.Ip ?? "-",
                     Age = (DateTime.UtcNow - s.Metadata.CreationTimestamp?.ToUniversalTime())?.TotalDays >= 1
@@ -53,9 +48,6 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene el detalle de un servicio específico.
-        /// </summary>
         [HttpGet("{name}")]
         public async Task<IActionResult> GetByName(string clusterId, string name, [FromQuery] string @namespace = "default")
         {
@@ -69,7 +61,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
                     return NotFound(new { Message = $"El servicio '{name}' no fue encontrado en el namespace '{@namespace}'." });
                 }
 
-                return Ok(service); // Devuelve el objeto V1Service (ya limpiado en el servicio)
+                return Ok(service);
             }
             catch (Exception ex)
             {
@@ -77,9 +69,6 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
         }
 
-        /// <summary>
-        /// Crea un nuevo Service.
-        /// </summary>
         [HttpPost]
         public async Task<IActionResult> Create(string clusterId, [FromBody] CreateServiceDTO dto)
         {
@@ -89,10 +78,8 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             {
                 var userId = _currentUser.UserId;
 
-                // Capturamos el resultado del servicio
                 var result = await _service.CreateAsync(userId, clusterId, dto);
 
-                // Devolvemos 201 Created con el cuerpo del resultado (incluyendo el warning si existe)
                 return StatusCode(201, result);
             }
             catch (k8s.Autorest.HttpOperationException ex) when (ex.Response.StatusCode == System.Net.HttpStatusCode.Conflict)
@@ -105,9 +92,6 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
         }
 
-        /// <summary>
-        /// Elimina un Service.
-        /// </summary>
         [HttpDelete("{name}")]
         public async Task<IActionResult> Delete(string clusterId, string name, [FromQuery] string @namespace = "default")
         {
