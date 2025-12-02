@@ -111,9 +111,22 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Network
                 }
             };
         }
-        public Task DeleteAsync(int userId, string clusterId, string namespaceName, string name)
+        public async Task DeleteAsync(int userId, string clusterId, string namespaceName, string name)
         {
-            throw new NotImplementedException();
+            var (userName, clusterName) = clusterService.GetClusterContext(userId, clusterId);
+
+            try
+            {
+                var client = clientConnection.GetClient(userId, clusterId);
+                await client.CoreV1.DeleteNamespacedServiceAsync(name, namespaceName);
+
+                auditService.LogOperation(userName, clusterName, $"DeleteService: {name}", true);
+            }
+            catch (Exception ex)
+            {
+                auditService.LogOperation(userName, clusterName, $"DeleteService: {name}", false, ex.Message);
+                throw;
+            }
         }
 
         public async Task<IEnumerable<V1Service>> GetAllAsync(int userId, string clusterId, string namespaceName)

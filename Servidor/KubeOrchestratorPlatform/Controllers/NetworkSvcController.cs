@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using k8s.Models;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Network;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
 using Servidor.KubeOrchestratorPlatform.Services.Network;
@@ -10,13 +9,13 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
     [Route("api/clusters/{clusterId}/services")]
     public class ServicesController : ControllerBase
     {
-        private readonly INetworkService _service;
-        private readonly ICurrentUserService _currentUser;
+        private readonly INetworkService networkService;
+        private readonly ICurrentUserService currentUserService;
 
         public ServicesController(INetworkService service, ICurrentUserService currentUser)
         {
-            _service = service;
-            _currentUser = currentUser;
+            networkService = service;
+            currentUserService = currentUser;
         }
 
         [HttpGet]
@@ -24,8 +23,8 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         {
             try
             {
-                var userId = _currentUser.UserId;
-                var services = await _service.GetAllAsync(userId, clusterId, @namespace);
+                var userId = currentUserService.UserId;
+                var services = await networkService.GetAllAsync(userId, clusterId, @namespace);
 
                 var result = services.Select(s => new
                 {
@@ -53,8 +52,8 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         {
             try
             {
-                var userId = _currentUser.UserId;
-                var service = await _service.GetByNameAsync(userId, clusterId, @namespace, name);
+                var userId = currentUserService.UserId;
+                var service = await networkService.GetByNameAsync(userId, clusterId, @namespace, name);
 
                 if (service == null)
                 {
@@ -76,9 +75,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
             try
             {
-                var userId = _currentUser.UserId;
+                var userId = currentUserService.UserId;
 
-                var result = await _service.CreateAsync(userId, clusterId, dto);
+                var result = await networkService.CreateAsync(userId, clusterId, dto);
 
                 return StatusCode(201, result);
             }
@@ -97,9 +96,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         {
             try
             {
-                var userId = _currentUser.UserId;
+                var userId = currentUserService.UserId;
 
-                await _service.DeleteAsync(userId, clusterId, @namespace, name);
+                await networkService.DeleteAsync(userId, clusterId, @namespace, name);
 
                 return Ok(new { Message = $"Servicio '{name}' eliminado correctamente." });
             }
