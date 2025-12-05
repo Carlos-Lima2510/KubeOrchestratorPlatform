@@ -16,6 +16,7 @@ using Servidor.KubeOrchestratorPlatform.Services.Namespace;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration;
 using Servidor.KubeOrchestratorPlatform.Services.Deployment;
+using Servidor.KubeOrchestratorPlatform.Services.Network;
 
 namespace Servidor
 {
@@ -51,6 +52,7 @@ namespace Servidor
                 builder.Services.AddScoped<INamespaceService, NamespaceService>();
                 builder.Services.AddScoped<ICurrentUserService, DevCurrentUserService>();
                 builder.Services.AddScoped<IDeploymentService, DeploymentService>();
+                builder.Services.AddScoped<INetworkService, NetworkService>();
 
                 builder.Services.AddScoped<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
                 builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();

@@ -9,13 +9,13 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
     [Route("api/clusters/{clusterId}/deployments")]
     public class DeploymentsController : ControllerBase
     {
-        private readonly IDeploymentService _service;
-        private readonly ICurrentUserService _currentUser;
+        private readonly IDeploymentService deploymentService;
+        private readonly ICurrentUserService currentUserService;
 
         public DeploymentsController(IDeploymentService service, ICurrentUserService currentUser)
         {
-            _service = service;
-            _currentUser = currentUser;
+            deploymentService = service;
+            currentUserService = currentUser;
         }
 
         /// <summary>
@@ -26,17 +26,14 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         {
             try
             {
-                var userId = _currentUser.UserId;
-                var deployments = await _service.GetAllAsync(userId, clusterId, @namespace);
+                var userId = currentUserService.UserId;
+                var deployments = await deploymentService.GetAllAsync(userId, clusterId, @namespace);
                 
-                // Proyección: Devolvemos solo lo necesario para una tabla/lista
                 var result = deployments.Select(d => new 
                 {
                     Name = d.Metadata.Name,
                     Namespace = d.Metadata.NamespaceProperty,
-                    // Muestra "2/3" réplicas
                     Replicas = $"{d.Status.AvailableReplicas ?? 0}/{d.Spec.Replicas}", 
-                    // Obtiene la primera imagen como referencia
                     Image = d.Spec.Template.Spec.Containers.FirstOrDefault()?.Image,
                     Age = (DateTime.UtcNow - d.Metadata.CreationTimestamp?.ToUniversalTime())?.TotalDays >= 1 
                           ? $"{(int?)(DateTime.UtcNow - d.Metadata.CreationTimestamp?.ToUniversalTime())?.TotalDays}d"
@@ -54,15 +51,14 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
         /// <summary>
         /// Obtiene el detalle completo (JSON crudo de K8s) de un deployment.
-        /// Útil para el botón "Ver YAML" o "Detalles".
         /// </summary>
         [HttpGet("{name}")]
         public async Task<IActionResult> GetByName(string clusterId, string name, [FromQuery] string @namespace = "default")
         {
             try
             {
-                var userId = _currentUser.UserId;
-                var deployment = await _service.GetByNameAsync(userId, clusterId, @namespace, name);
+                var userId = currentUserService.UserId;
+                var deployment = await deploymentService.GetByNameAsync(userId, clusterId, @namespace, name);
 
                 if (deployment == null)
                 {
@@ -90,9 +86,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
             try
             {
-                var userId = _currentUser.UserId;
+                var userId = currentUserService.UserId;
                 
-                await _service.CreateAsync(userId, clusterId, dto);
+                await deploymentService.CreateAsync(userId, clusterId, dto);
                 
                 return StatusCode(201, new { Message = $"Deployment '{dto.Name}' creado e iniciado exitosamente." });
             }
@@ -114,9 +110,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         {
             try
             {
-                var userId = _currentUser.UserId;
+                var userId = currentUserService.UserId;
                 
-                await _service.DeleteAsync(userId, clusterId, @namespace, name);
+                await deploymentService.DeleteAsync(userId, clusterId, @namespace, name);
                 
                 return Ok(new { Message = $"Deployment '{name}' eliminado correctamente." });
             }
