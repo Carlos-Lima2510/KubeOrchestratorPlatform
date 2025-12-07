@@ -17,6 +17,7 @@ using Servidor.KubeOrchestratorPlatform.Services.Auth;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration;
 using Servidor.KubeOrchestratorPlatform.Services.Deployment;
 using Servidor.KubeOrchestratorPlatform.Services.Network;
+using Servidor.KubeOrchestratorPlatform.Services.Pods;
 
 namespace Servidor
 {
@@ -41,6 +42,17 @@ namespace Servidor
 
                 builder.Host.UseSerilog();
 
+                builder.Services.AddCors(options =>
+                {
+                    options.AddPolicy("AllowFrontend",
+                        policy =>
+                        {
+                            policy.WithOrigins("http://localhost:3000")
+                                  .AllowAnyHeader()
+                                  .AllowAnyMethod();
+                        });
+                });
+
                 builder.Services.AddDbContext<AppDbContext>(options =>
                     options.UseMySql(builder.Configuration.GetConnectionString("MySql"),
                                      new MySqlServerVersion(new Version(8, 0, 44))));
@@ -53,6 +65,7 @@ namespace Servidor
                 builder.Services.AddScoped<ICurrentUserService, DevCurrentUserService>();
                 builder.Services.AddScoped<IDeploymentService, DeploymentService>();
                 builder.Services.AddScoped<INetworkService, NetworkService>();
+                builder.Services.AddScoped<IPodService, PodService>();
 
                 builder.Services.AddScoped<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
                 builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
@@ -83,6 +96,7 @@ namespace Servidor
                     app.UseSwaggerUI();
                 }
 
+                app.UseCors("AllowFrontend");
                 app.UseAuthorization();
                 app.MapControllers();
 
