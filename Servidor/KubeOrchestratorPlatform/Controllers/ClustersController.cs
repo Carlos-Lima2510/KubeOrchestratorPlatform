@@ -4,6 +4,8 @@ using Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using k8s;
+using Servidor.KubeOrchestratorPlatform.Repositories;
+using Servidor.KubeOrchestratorPlatform.Services.Metrics;
 
 namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
@@ -12,18 +14,23 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
     public class ClustersController : ControllerBase
     {
         private readonly IClusterConfigurationService configurationService;
+        private readonly IMetricsService metricsService;
         private readonly ICurrentUserService currentUserService;
         private readonly IKubernetesUserClientConnection clientConnection;
-
+        private readonly IUserClusterRepository userClusterRepository;
         public ClustersController(
             IClusterConfigurationService configurationService,
             ICurrentUserService currentUserService,
-            IKubernetesUserClientConnection clientConnection
+            IKubernetesUserClientConnection clientConnection,
+            IUserClusterRepository userClusterRepository,
+            IMetricsService metricsService
             )
         {
             this.configurationService = configurationService;
             this.currentUserService = currentUserService;
             this.clientConnection = clientConnection;
+            this.userClusterRepository = userClusterRepository;
+            this.metricsService = metricsService;
         }
 
         [HttpGet("{clusterId}/status")]
@@ -71,6 +78,30 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetAllClusters()
+        {
+            try
+            {
+                var userId = currentUserService.UserId;
+                var clusters = await userClusterRepository.GetAllClustersAsync(userId);
+
+                var result = clusters.Select(c => new
+                {
+                    Id = c.PublicClusterId,
+                    Name = c.DisplayName,
+                    Server = c.ServerUrl,
+                    IsActive = c.IsActive
+                });
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Error = ex.Message });
+            }
+        }
+
         [HttpPost("{clusterId}/config")]
         public async Task<IActionResult> UploadKubeConfig(string clusterId, [FromForm] KubeConfigDTO kubeConfig)
         {
@@ -114,6 +145,21 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        [HttpGet("{clusterId}/metrics")]
+        public async Task<IActionResult> GetMetrics(string clusterId)
+        {
+            try
+            {
+                var userId = currentUserService.UserId;
+                var metrics = await metricsService.GetClusterMetricsAsync(userId, clusterId);
+                return Ok(metrics);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "No se pudieron obtener las métricas. Asegúrese de tener 'metrics-server' instalado en el cluster.", details = ex.Message });
             }
         }
     }

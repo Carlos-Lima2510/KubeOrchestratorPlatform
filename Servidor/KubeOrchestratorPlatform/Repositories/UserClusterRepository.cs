@@ -96,5 +96,20 @@ namespace Servidor.KubeOrchestratorPlatform.Repositories
 
             return (result?.UserName, result?.ClusterName);
         }
+
+        public async Task<IEnumerable<ConnectedCluster>> GetAllClustersAsync(int userId)
+        {
+            try
+            {
+                return await database.ConnectedClusters
+                    .Where(c => c.UserId == userId)
+                    .Include(c => c.User)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Error obteniendo todas las configuraciones de clusters", ex);
+            }
+        }
     }
 }
