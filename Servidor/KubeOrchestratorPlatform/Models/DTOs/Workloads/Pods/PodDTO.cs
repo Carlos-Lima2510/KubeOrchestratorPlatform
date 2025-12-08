@@ -10,5 +10,6 @@ namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Pods
         public string Node { get; set; } = string.Empty;
         public string Age { get; set; } = string.Empty;
         public string Ip { get; set; } = string.Empty;
+        public List<string> Containers { get; set; } = new();
     }
 }

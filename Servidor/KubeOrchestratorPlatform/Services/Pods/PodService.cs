@@ -46,7 +46,17 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Pods
                 return new List<PodDTO>();
             }
         }
+        public async Task<Stream> GetLogsAsync(int userId, string clusterId, string namespaceName, string podName, string containerName)
+        {
+            var client = connection.GetClient(userId, clusterId);
 
+            return await client.CoreV1.ReadNamespacedPodLogAsync(
+                podName,
+                namespaceName,
+                container: containerName,
+                tailLines: 1000
+            );
+        }
         private PodDTO MapToDTO(V1Pod pod)
         {
             var status = pod.Status.Phase;
@@ -86,7 +96,8 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Pods
                 Restarts = restarts,
                 Node = pod.Spec.NodeName ?? "Pending",
                 Ip = pod.Status.PodIP ?? "-",
-                Age = ageStr
+                Age = ageStr,
+                Containers = pod.Spec.Containers.Select(c => c.Name).ToList()
             };
         }
     }
