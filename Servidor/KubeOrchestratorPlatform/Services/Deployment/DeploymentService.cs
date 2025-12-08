@@ -104,7 +104,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
                         {
                             ServiceAccountName = dto.ServiceAccountName,
                             NodeSelector = dto.NodeSelector.Count > 0 ? dto.NodeSelector : null,
-                            ImagePullSecrets = dto.ImagePullSecrets.Select(x => new V1LocalObjectReference()).ToList(),
+                            ImagePullSecrets = dto.ImagePullSecrets.Select(x => new V1LocalObjectReference { Name = x }).ToList(),
 
                             InitContainers = dto.InitContainers.Select(MapContainer).ToList(),
                             Containers = dto.Containers.Select(MapContainer).ToList(),
