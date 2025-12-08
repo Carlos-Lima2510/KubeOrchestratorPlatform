@@ -47,7 +47,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
                 if (errorBody.Contains("x509: certificate is valid for") && errorBody.Contains("not"))
                 {
-                    return StatusCode(500, "ALERTA DE INFRAESTRUCTURA: La IP de tu nodo Kubernetes ha cambiado y los certificados internos no coinciden. \n\nSOLUCIÓN: Ejecuta 'sudo microk8s refresh-certs --cert server.crt'.");
+                    return StatusCode(500, "ALERTA DE INFRAESTRUCTURA: La IP de tu nodo Kubernetes ha cambiado y los certificados internos no coinciden.");
                 }
 
                 if (ex.Response.StatusCode == System.Net.HttpStatusCode.NotFound)

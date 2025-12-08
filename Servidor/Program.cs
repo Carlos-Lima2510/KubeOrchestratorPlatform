@@ -27,7 +27,7 @@ namespace Servidor
         public static void Main(string[] args)
         {
             Env.Load();
-            
+
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Information()
                 .Enrich.FromLogContext()
@@ -101,6 +101,26 @@ namespace Servidor
                 app.UseCors("AllowFrontend");
                 app.UseAuthorization();
                 app.MapControllers();
+
+                using (var scope = app.Services.CreateScope())
+                {
+                    var services = scope.ServiceProvider;
+                    try
+                    {
+                        var context = services.GetRequiredService<AppDbContext>();
+
+                        if (context.Database.GetPendingMigrations().Any())
+                        {
+                            Log.Information("Aplicando migraciones de base de datos pendientes...");
+                            context.Database.Migrate(); 
+                            Log.Information("Migraciones aplicadas correctamente.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Ocurrió un error al intentar aplicar las migraciones automáticamente.");
+                    }
+                }
 
                 app.Run();
             }
