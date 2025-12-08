@@ -18,6 +18,7 @@ using Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration;
 using Servidor.KubeOrchestratorPlatform.Services.Deployment;
 using Servidor.KubeOrchestratorPlatform.Services.Network;
 using Servidor.KubeOrchestratorPlatform.Services.Pods;
+using Servidor.KubeOrchestratorPlatform.Services.Metrics;
 
 namespace Servidor
 {
@@ -66,6 +67,7 @@ namespace Servidor
                 builder.Services.AddScoped<IDeploymentService, DeploymentService>();
                 builder.Services.AddScoped<INetworkService, NetworkService>();
                 builder.Services.AddScoped<IPodService, PodService>();
+                builder.Services.AddScoped<IMetricsService, MetricsService>();
 
                 builder.Services.AddScoped<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
                 builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
