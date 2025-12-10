@@ -2,6 +2,10 @@ using StackExchange.Redis;
 using DotNetEnv;
 using Serilog;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer; // NUEVO
+using Microsoft.IdentityModel.Tokens; // NUEVO
+using System.Text; // NUEVO
+using Microsoft.OpenApi.Models; // NUEVO
 using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using Servidor.KubeOrchestratorPlatform.Services.Audit;
@@ -43,6 +47,21 @@ namespace Servidor
 
                 builder.Host.UseSerilog();
 
+                builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                    .AddJwtBearer(options =>
+                    {
+                        options.TokenValidationParameters = new TokenValidationParameters
+                        {
+                            ValidateIssuer = true,
+                            ValidateAudience = true,
+                            ValidateLifetime = true,
+                            ValidateIssuerSigningKey = true,
+                            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                            ValidAudience = builder.Configuration["Jwt:Audience"],
+                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+                        };
+                    });
+
                 builder.Services.AddCors(options =>
                 {
                     options.AddPolicy("AllowFrontend",
@@ -58,12 +77,17 @@ namespace Servidor
                     options.UseMySql(builder.Configuration.GetConnectionString("MySql"),
                                      new MySqlServerVersion(new Version(8, 0, 44))));
 
+                builder.Services.AddHttpContextAccessor();
+
                 builder.Services.AddScoped<IUserClusterRepository, UserClusterRepository>();
                 builder.Services.AddScoped<IUserClusterCache, UserClusterCache>();
                 builder.Services.AddScoped<IClusterService, ClusterService>();
                 builder.Services.AddScoped<IClusterConfigurationService, ClusterConfigurationService>();
                 builder.Services.AddScoped<INamespaceService, NamespaceService>();
-                builder.Services.AddScoped<ICurrentUserService, DevCurrentUserService>();
+                
+                builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+                builder.Services.AddScoped<IAuthService, AuthService>(); 
+
                 builder.Services.AddScoped<IDeploymentService, DeploymentService>();
                 builder.Services.AddScoped<INetworkService, NetworkService>();
                 builder.Services.AddScoped<IPodService, PodService>();
@@ -71,7 +95,6 @@ namespace Servidor
 
                 builder.Services.AddScoped<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
                 builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
-
 
                 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
                 {
@@ -88,7 +111,36 @@ namespace Servidor
                 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 
                 builder.Services.AddEndpointsApiExplorer();
-                builder.Services.AddSwaggerGen();
+                
+                builder.Services.AddSwaggerGen(c =>
+                {
+                    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                    {
+                        Description = "JWT Authorization header using the Bearer scheme. \r\n\r\n Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\nExample: \"Bearer 12345abcdef\"",
+                        Name = "Authorization",
+                        In = ParameterLocation.Header,
+                        Type = SecuritySchemeType.ApiKey,
+                        Scheme = "Bearer"
+                    });
+
+                    c.AddSecurityRequirement(new OpenApiSecurityRequirement()
+                    {
+                        {
+                            new OpenApiSecurityScheme
+                            {
+                                Reference = new OpenApiReference
+                                {
+                                    Type = ReferenceType.SecurityScheme,
+                                    Id = "Bearer"
+                                },
+                                Scheme = "oauth2",
+                                Name = "Bearer",
+                                In = ParameterLocation.Header,
+                            },
+                            new List<string>()
+                        }
+                    });
+                });
 
                 var app = builder.Build();
 
@@ -99,7 +151,10 @@ namespace Servidor
                 }
 
                 app.UseCors("AllowFrontend");
+
+                app.UseAuthentication();
                 app.UseAuthorization();
+                
                 app.MapControllers();
 
                 using (var scope = app.Services.CreateScope())
