@@ -27,12 +27,15 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Auth
             
             if (await dbContext.Users.AnyAsync(u => u.Username == request.Username))
                 throw new Exception("El nombre de usuario ya está en uso.");
+            
+            bool isFirstUser = !await dbContext.Users.AnyAsync();
 
             var user = new User
             {
                 Username = request.Username,
                 Email = request.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                Role = isFirstUser ? "Admin" : "User", 
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -50,7 +53,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Auth
             {
                 throw new Exception("Credenciales inválidas.");
             }
-            
+
             user.LastLoginAt = DateTime.UtcNow;
             await dbContext.SaveChangesAsync();
 
@@ -64,7 +67,8 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Auth
             {
                 Token = token,
                 Username = user.Username,
-                Email = user.Email
+                Email = user.Email,
+                IsAdmin = user.Role == "Admin"
             };
         }
 
@@ -76,7 +80,8 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Auth
             {
                 new Claim("id", user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Email, user.Email)
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role)
             };
 
             var creds = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256);

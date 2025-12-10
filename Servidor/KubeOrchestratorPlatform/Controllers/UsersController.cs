@@ -7,7 +7,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
     [ApiController]
     [Route("api/users")]
-    [Authorize] 
+    [Authorize(Roles = "Admin")] 
     public class UsersController : ControllerBase
     {
         private readonly AppDbContext dbContext;

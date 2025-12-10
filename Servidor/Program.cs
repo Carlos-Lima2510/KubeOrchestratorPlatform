@@ -75,7 +75,13 @@ namespace Servidor
 
                 builder.Services.AddDbContext<AppDbContext>(options =>
                     options.UseMySql(builder.Configuration.GetConnectionString("MySql"),
-                                     new MySqlServerVersion(new Version(8, 0, 44))));
+                                     new MySqlServerVersion(new Version(8, 0, 44)),
+                                     mySqlOptions => mySqlOptions.EnableRetryOnFailure(
+                                     maxRetryCount: 5,
+                                     maxRetryDelay: TimeSpan.FromSeconds(10),
+                                     errorNumbersToAdd: null)
+
+                    ));
 
                 builder.Services.AddHttpContextAccessor();
 
@@ -84,9 +90,9 @@ namespace Servidor
                 builder.Services.AddScoped<IClusterService, ClusterService>();
                 builder.Services.AddScoped<IClusterConfigurationService, ClusterConfigurationService>();
                 builder.Services.AddScoped<INamespaceService, NamespaceService>();
-                
+
                 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-                builder.Services.AddScoped<IAuthService, AuthService>(); 
+                builder.Services.AddScoped<IAuthService, AuthService>();
 
                 builder.Services.AddScoped<IDeploymentService, DeploymentService>();
                 builder.Services.AddScoped<INetworkService, NetworkService>();
@@ -111,7 +117,7 @@ namespace Servidor
                 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 
                 builder.Services.AddEndpointsApiExplorer();
-                
+
                 builder.Services.AddSwaggerGen(c =>
                 {
                     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -154,7 +160,7 @@ namespace Servidor
 
                 app.UseAuthentication();
                 app.UseAuthorization();
-                
+
                 app.MapControllers();
 
                 using (var scope = app.Services.CreateScope())
@@ -167,7 +173,7 @@ namespace Servidor
                         if (context.Database.GetPendingMigrations().Any())
                         {
                             Log.Information("Aplicando migraciones de base de datos pendientes...");
-                            context.Database.Migrate(); 
+                            context.Database.Migrate();
                             Log.Information("Migraciones aplicadas correctamente.");
                         }
                     }
