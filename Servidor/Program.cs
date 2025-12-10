@@ -37,7 +37,6 @@ namespace Servidor
                 .MinimumLevel.Information()
                 .Enrich.FromLogContext()
                 .WriteTo.Console()
-                .WriteTo.File("Logs/orchestrator.log", rollingInterval: RollingInterval.Day)
                 .CreateLogger();
 
             try
