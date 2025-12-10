@@ -11,9 +11,13 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Audit
         public void LogConnection(string userName, string clusterName, bool success, string? error = null)
         {
             if (success)
-                logger.LogInformation("Conexión exitosa al cluster para usuario {UserName} en el cluster {ClusterName}", userName, clusterName);
+            {
+                logger.LogDebug("Conexión exitosa al cluster para usuario {UserName} en el cluster {ClusterName}", userName, clusterName);
+            }
             else
+            {
                 logger.LogWarning("Intento de conexión fallido para usuario {UserName} en cluster {ClusterName}. Error: {Error}", userName, clusterName, error);
+            }
         }
 
         public void LogOperation(string userName, string clusterName, string operation, bool success, string? error = null)

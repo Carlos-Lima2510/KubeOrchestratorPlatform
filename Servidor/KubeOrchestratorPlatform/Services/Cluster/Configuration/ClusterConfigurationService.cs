@@ -1,3 +1,5 @@
+using k8s;
+using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Models;
 using Servidor.KubeOrchestratorPlatform.Responses;
 using Servidor.KubeOrchestratorPlatform.Services.Audit;
@@ -10,15 +12,18 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration
         private readonly IClusterService clusterService;
         private readonly IKubeConfigParser parserService;
         private readonly IAuditService auditService;
+        private readonly IKubernetesClientFactory clientFactory;
 
         public ClusterConfigurationService(
             IClusterService clusterService,
             IKubeConfigParser parserService,
-            IAuditService auditService)
+            IAuditService auditService,
+            IKubernetesClientFactory clientFactory)
         {
             this.clusterService = clusterService;
             this.parserService = parserService;
             this.auditService = auditService;
+            this.clientFactory = clientFactory;
         }
         public Task DeleteConfigurationAsync(int userId, string clusterId)
         {
@@ -54,6 +59,18 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration
                     throw new ArgumentException("El archivo de configuración está vacío.");
 
                 var parsed = parserService.Parse(yamlContent);
+
+                try 
+                {
+                    var tempClient = clientFactory.CreateClient(parsed);
+                    
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await tempClient.CoreV1.ListNamespaceAsync(limit: 1, cancellationToken: cts.Token);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"El archivo es válido, pero no se pudo conectar al cluster: {ex.Message}");
+                }
 
                 var creds = new ClusterCredentials
                 {
