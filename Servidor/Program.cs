@@ -85,6 +85,8 @@ namespace Servidor
 
                 builder.Services.AddHttpContextAccessor();
 
+                builder.Services.AddMemoryCache();
+
                 builder.Services.AddScoped<IUserClusterRepository, UserClusterRepository>();
                 builder.Services.AddScoped<IUserClusterCache, UserClusterCache>();
                 builder.Services.AddScoped<IClusterService, ClusterService>();
