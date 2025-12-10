@@ -2,10 +2,10 @@ using StackExchange.Redis;
 using DotNetEnv;
 using Serilog;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer; // NUEVO
-using Microsoft.IdentityModel.Tokens; // NUEVO
-using System.Text; // NUEVO
-using Microsoft.OpenApi.Models; // NUEVO
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.OpenApi.Models;
 using Servidor.KubeOrchestratorPlatform.Factories.Client;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using Servidor.KubeOrchestratorPlatform.Services.Audit;
@@ -23,6 +23,7 @@ using Servidor.KubeOrchestratorPlatform.Services.Deployment;
 using Servidor.KubeOrchestratorPlatform.Services.Network;
 using Servidor.KubeOrchestratorPlatform.Services.Pods;
 using Servidor.KubeOrchestratorPlatform.Services.Metrics;
+using Servidor.Hubs;
 
 namespace Servidor
 {
@@ -60,6 +61,21 @@ namespace Servidor
                             ValidAudience = builder.Configuration["Jwt:Audience"],
                             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
                         };
+
+                        options.Events = new JwtBearerEvents
+                        {
+                            OnMessageReceived = context =>
+                            {
+                                var accessToken = context.Request.Query["access_token"];
+
+                                var path = context.HttpContext.Request.Path;
+                                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                                {
+                                    context.Token = accessToken;
+                                }
+                                return Task.CompletedTask;
+                            }
+                        };
                     });
 
                 builder.Services.AddCors(options =>
@@ -69,7 +85,8 @@ namespace Servidor
                         {
                             policy.WithOrigins("http://localhost:3000")
                                   .AllowAnyHeader()
-                                  .AllowAnyMethod();
+                                  .AllowAnyMethod()
+                                  .AllowCredentials();
                         });
                 });
 
@@ -86,6 +103,8 @@ namespace Servidor
                 builder.Services.AddHttpContextAccessor();
 
                 builder.Services.AddMemoryCache();
+
+                builder.Services.AddSignalR();
 
                 builder.Services.AddScoped<IUserClusterRepository, UserClusterRepository>();
                 builder.Services.AddScoped<IUserClusterCache, UserClusterCache>();
@@ -164,6 +183,8 @@ namespace Servidor
                 app.UseAuthorization();
 
                 app.MapControllers();
+
+                app.MapHub<ClusterHub>("/hubs/cluster");
 
                 using (var scope = app.Services.CreateScope())
                 {
