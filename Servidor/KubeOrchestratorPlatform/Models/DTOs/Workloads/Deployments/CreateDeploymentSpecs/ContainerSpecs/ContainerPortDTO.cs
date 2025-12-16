@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs.Enums;
 
 namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments.CreateDeploymentSpecs.ContainerSpecs
 {
@@ -16,8 +17,6 @@ namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments.Cr
         public int? HostPort { get; set; }
 
         public string? HostIP { get; set; }
-
-        [RegularExpression("^(TCP|UDP|SCTP)$", ErrorMessage = "El protocolo debe ser TCP, UDP o SCTP")]
-        public string Protocol { get; set; } = "TCP";
+        public Protocol Protocol { get; set; }
     }
 }

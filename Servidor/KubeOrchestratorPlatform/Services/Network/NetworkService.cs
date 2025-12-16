@@ -91,7 +91,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Network
                 {
                     Selector = dto.Selector,
 
-                    Type = dto.Type,
+                    Type = dto.Type.ToString(),
 
                     Ports = dto.Ports.Select(p => new V1ServicePort
                     {
@@ -99,15 +99,15 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Network
                         Port = p.Port,
                         TargetPort = p.TargetPort.HasValue ? p.TargetPort.Value : null,
                         NodePort = p.NodePort,
-                        Protocol = p.Protocol
+                        Protocol = p.Protocol.ToString()
                     }).ToList(),
 
-                    SessionAffinity = dto.SessionAffinity,
-                    InternalTrafficPolicy = dto.InternalTrafficPolicy,
-                    ExternalTrafficPolicy = (dto.Type == "NodePort" || dto.Type == "LoadBalancer")
-                                            ? dto.ExternalTrafficPolicy : null,
+                    SessionAffinity = dto.SessionAffinity.ToString(),
+                    InternalTrafficPolicy = dto.InternalTrafficPolicy.ToString(),
+                    ExternalTrafficPolicy = (dto.Type.ToString() == "NodePort" || dto.Type.ToString() == "LoadBalancer")
+                                            ? dto.ExternalTrafficPolicy.ToString() : null,
 
-                    IpFamilyPolicy = dto.IpFamilyPolicy
+                    IpFamilyPolicy = dto.IpFamilyPolicy.ToString()
                 }
             };
         }
