@@ -2,7 +2,9 @@ using k8s;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Servidor.KubeOrchestratorPlatform.Factories.Client;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Pods;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
+using Servidor.KubeOrchestratorPlatform.Services.Deployment;
 using Servidor.KubeOrchestratorPlatform.Services.Metrics;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
@@ -15,15 +17,18 @@ namespace Servidor.Hubs
         private readonly IMetricsService metricsService;
         private readonly IKubernetesUserClientConnection clientConnection; 
         private readonly ILogger<ClusterHub> logger;
+        private readonly IDeploymentService deploymentService;
 
         public ClusterHub(
             IMetricsService metricsService, 
             ILogger<ClusterHub> logger, 
-            IKubernetesUserClientConnection clientConnection)
+            IKubernetesUserClientConnection clientConnection,
+            IDeploymentService deploymentService)
         {
             this.metricsService = metricsService;
             this.logger = logger;
             this.clientConnection = clientConnection;
+            this.deploymentService = deploymentService;
         }
         public async IAsyncEnumerable<object> StreamClusterMetrics(
             string clusterId, 
@@ -98,6 +103,46 @@ namespace Servidor.Hubs
 
                 try { await Task.Delay(30000, cancellationToken); } 
                 catch { break; }
+            }
+        }
+
+        public async IAsyncEnumerable<IEnumerable<PodDTO>> StreamDeploymentPods(
+            string clusterId, 
+            string namespaceName, 
+            string deploymentName, 
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            var httpContext = Context.GetHttpContext();
+            var userIdClaim = httpContext?.User.Claims.FirstOrDefault(c => c.Type == "id");
+
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+            {
+                throw new HubException("Unauthorized");
+            }
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                object? result = null;
+                try 
+                {
+                    var pods = await deploymentService.GetPodsAsync(userId, clusterId, namespaceName, deploymentName);
+                    result = pods;
+                }
+                catch (Exception ex)
+                {
+                    result = new { error = "Error sincronizando pods", details = ex.Message };
+                }
+
+                if (result is IEnumerable<PodDTO> podDtos)
+                {
+                    yield return podDtos;
+                }
+
+                try {
+                    await Task.Delay(3000, cancellationToken);
+                } catch (TaskCanceledException) {
+                    break; 
+                }
             }
         }
     }

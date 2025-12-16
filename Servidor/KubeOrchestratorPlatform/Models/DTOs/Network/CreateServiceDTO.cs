@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs.Enums;
 
 namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Network
 {
@@ -16,23 +17,18 @@ namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Network
         [Required(ErrorMessage = "Debes especificar un selector para conectar con los pods")]
         public Dictionary<string, string> Selector { get; set; } = new();
 
-        [RegularExpression("^(ClusterIP|NodePort|LoadBalancer|ExternalName)$", ErrorMessage = "Tipo de servicio no válido")]
-        public string Type { get; set; } = "ClusterIP";
+        public ServiceType Type { get; set; } = ServiceType.ClusterIP;
 
         [Required]
         [MinLength(1, ErrorMessage = "El servicio debe exponer al menos un puerto")]
         public List<ServicePortDto> Ports { get; set; } = new();
 
-        [RegularExpression("^(None|ClientIP)$")]
-        public string SessionAffinity { get; set; } = "None";
+        public SessionAffinity SessionAffinity { get; set; } = SessionAffinity.None;
 
-        [RegularExpression("^(Cluster|Local)$")]
-        public string InternalTrafficPolicy { get; set; } = "Cluster";
+        public TrafficPolicy InternalTrafficPolicy { get; set; } = TrafficPolicy.Cluster;
 
-        [RegularExpression("^(Cluster|Local)$")]
-        public string ExternalTrafficPolicy { get; set; } = "Cluster";
+        public TrafficPolicy ExternalTrafficPolicy { get; set; } = TrafficPolicy.Cluster;
 
-        [RegularExpression("^(SingleStack|PreferDualStack|RequireDualStack)$")]
-        public string IpFamilyPolicy { get; set; } = "SingleStack";
+        public IpFamilyPolicy IpFamilyPolicy { get; set; } = IpFamilyPolicy.SingleStack;
     }
 }

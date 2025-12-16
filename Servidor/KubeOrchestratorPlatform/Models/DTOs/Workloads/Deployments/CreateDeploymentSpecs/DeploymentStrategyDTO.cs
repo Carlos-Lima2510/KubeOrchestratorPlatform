@@ -1,11 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs.Enums;
 
 namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments.CreateDeploymentSpecs
 {
     public class DeploymentStrategyDTO
     {
-        [RegularExpression("^(RollingUpdate|Recreate)$", ErrorMessage = "El tipo de estrategia debe ser 'RollingUpdate' o 'Recreate'")]
-        public string Type { get; set; } = "RollingUpdate"; 
+        public StrategyType Type { get; set; }
         public RollingUpdateConfigDto? RollingUpdate { get; set; }
     }
 

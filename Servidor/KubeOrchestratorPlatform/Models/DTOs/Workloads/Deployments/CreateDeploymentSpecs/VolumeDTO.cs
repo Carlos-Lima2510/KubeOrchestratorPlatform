@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs.Enums;
 
 namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments.CreateDeploymentSpecs
 {
@@ -6,9 +7,7 @@ namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments.Cr
     {
         [Required]
         public string Name { get; set; } = string.Empty;
-        
-        [RegularExpression("^(EmptyDir|PersistentVolumeClaim|ConfigMap|Secret)$", ErrorMessage = "Tipo de volumen no soportado")]
-        public string Type { get; set; } = "EmptyDir"; 
+        public VolumeType Type { get; set; } 
         public string? SourceName { get; set; }
     }
 }

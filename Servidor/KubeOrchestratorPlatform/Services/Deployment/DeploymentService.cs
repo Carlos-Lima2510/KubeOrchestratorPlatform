@@ -3,6 +3,7 @@ using k8s.Models;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments.CreateDeploymentSpecs;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments.CreateDeploymentSpecs.ContainerSpecs;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Pods;
 using Servidor.KubeOrchestratorPlatform.Services.Audit;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
@@ -117,9 +118,9 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
         }
         private V1DeploymentStrategy MapStrategy(DeploymentStrategyDTO dto)
         {
-            var strategy = new V1DeploymentStrategy { Type = dto.Type };
+            var strategy = new V1DeploymentStrategy { Type = dto.Type.ToString() };
 
-            if (dto.Type == "RollingUpdate" && dto.RollingUpdate != null)
+            if (dto.Type.ToString() == "RollingUpdate" && dto.RollingUpdate != null)
             {
                 strategy.RollingUpdate = new V1RollingUpdateDeployment
                 {
@@ -145,7 +146,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
                     ContainerPort = p.ContainerPort,
                     HostPort = p.HostPort,
                     HostIP = p.HostIP,
-                    Protocol = p.Protocol
+                    Protocol = p.Protocol.ToString()
                 }).ToList(),
 
                 Env = MapEnvVars(dto.Environment),
@@ -182,7 +183,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
         {
             var vol = new V1Volume { Name = dto.Name };
 
-            switch (dto.Type)
+            switch (dto.Type.ToString())
             {
                 case "EmptyDir":
                     vol.EmptyDir = new V1EmptyDirVolumeSource();
@@ -261,6 +262,48 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
             }
             return result;
         }
+
+        public async Task<IEnumerable<PodDTO>> GetPodsAsync(int userId, string clusterId, string namespaceName, string deploymentName)
+        {
+            var client = clientConnection.GetClient(userId, clusterId);
+
+            var deployment = await client.AppsV1.ReadNamespacedDeploymentAsync(deploymentName, namespaceName);
+
+            if (deployment?.Spec?.Selector?.MatchLabels == null)
+            {
+                return Enumerable.Empty<PodDTO>();
+            }
+
+            var labelSelector = string.Join(",", deployment.Spec.Selector.MatchLabels.Select(kv => $"{kv.Key}={kv.Value}"));
+
+            var podsList = await client.CoreV1.ListNamespacedPodAsync(namespaceName, labelSelector: labelSelector);
+
+            return podsList.Items.Select(pod => new PodDTO
+            {
+                Name = pod.Metadata.Name,
+                Status = pod.Status.Phase,
+                Message = GetPodMessage(pod),
+                Restarts = pod.Status.ContainerStatuses?.Sum(c => c.RestartCount) ?? 0,
+                Node = pod.Spec.NodeName,
+                Age = CalculateAge(pod.Metadata.CreationTimestamp),
+                Containers = pod.Spec.Containers.Select(c => c.Name).ToList()
+            }).ToList();
+        }
+        private string GetPodMessage(V1Pod pod)
+        {
+            var waiting = pod.Status.ContainerStatuses?.FirstOrDefault(c => c.State.Waiting != null);
+            if (waiting != null) return waiting.State.Waiting.Reason;
+
+            return pod.Status.Reason ?? "";
+        }
+        private string CalculateAge(DateTime? creation)
+        {
+            if (!creation.HasValue) return "Unknown";
+            var span = DateTime.UtcNow - creation.Value;
+            if (span.TotalDays > 1) return $"{(int)span.TotalDays}d";
+            if (span.TotalHours > 1) return $"{(int)span.TotalHours}h";
+            return $"{(int)span.TotalMinutes}m";
+        }
         public async Task DeleteAsync(int userId, string clusterId, string namespaceName, string name)
         {
             var (userName, clusterName) = clusterService.GetClusterContext(userId, clusterId);
@@ -269,7 +312,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
             {
                 var client = clientConnection.GetClient(userId, clusterId);
                 await client.AppsV1.DeleteNamespacedDeploymentAsync(name, namespaceName);
-                
+
                 auditService.LogOperation(userName, clusterName, $"DeleteDeployment: {name}", true);
             }
             catch (Exception ex)

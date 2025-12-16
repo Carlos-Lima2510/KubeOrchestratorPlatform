@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs.Enums;
 
 namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Network
 {
@@ -16,8 +17,6 @@ namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Network
 
         [Range(30000, 32767)]
         public int? NodePort { get; set; }
-        
-        [RegularExpression("^(TCP|UDP|SCTP)$")]
-        public string Protocol { get; set; } = "TCP";
+        public Protocol Protocol { get; set; }
     }
 }
