@@ -1,0 +1,68 @@
+@startuml
+title Flujo Operativo de KubeOrchestrator
+start
+
+if (¿Usuario Autenticado?) then (No)
+  partition "IAM - Identidad" {
+    :Login / Registro;
+    note right: AuthController\n(JWT Token)
+  }
+else (Si)
+endif
+
+:Panel de Usuario;
+
+partition "Conexión de Clúster" {
+  :Subir archivo KubeConfig;
+  :Parser KubeConfigParser;
+  if (¿Archivo Válido?) then (No)
+    :Mostrar Error;
+    stop
+  else (Si)
+    :Encriptar Credenciales (AES);
+    :Guardar en MySQL;
+  endif
+}
+
+:Seleccionar Clúster;
+
+fork
+  partition "Monitoreo (Observability)" {
+    :Conectar a ClusterHub (SignalR);
+    :Iniciar Stream de Métricas;
+    while (¿Conexión Activa?)
+      :Obtener Métricas de Nodos;
+      :Enviar CPU/RAM al Cliente;
+      :Esperar 5s;
+    endwhile
+    :Desconectar;
+  }
+fork again
+  partition "Orquestación (Workloads)" {
+    :Listar Namespaces;
+    :Crear Deployment;
+    note right
+      Define:
+      - Imagen
+      - Réplicas
+      - Probes
+    end note
+    
+    :K8s API: CreateDeployment;
+    
+    if (¿Éxito?) then (Si)
+      :Verificar Pods;
+      if (¿Pods Running?) then (Si)
+        :Crear Servicio (Networking);
+        :Exponer Aplicación;
+      else (No)
+        :Ver Logs (PodService);
+      endif
+    else (No)
+      :Registrar Error (AuditService);
+    endif
+  }
+end fork
+
+stop
+@enduml

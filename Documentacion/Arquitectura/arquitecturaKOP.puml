@@ -1,0 +1,45 @@
+@startuml
+title Arquitectura del Sistema KubeOrchestrator (Contenedores)
+
+' -- CLIENTE --
+node "Cliente (Navegador)" {
+    component "Frontend Next JS" as Frontend
+}
+
+' -- SERVIDOR DOCKER --
+node "Docker Host (Servidor)" {
+    
+    ' Contenedor API
+    component "Backend API\n(.NET 8)" as API #AliceBlue
+
+    ' Contenedor Base de Datos
+    database "MySQL 8.0\n(Persistencia)" as MySQL
+
+    ' Contenedor Caché
+    database "Redis Alpine\n(Caché)" as Redis
+}
+
+' -- EXTERNO --
+cloud "Nube / On-Premise" {
+    node "Cluster Kubernetes\n(Target)" as K8s {
+        component "K8s API Server" as K8sAPI
+    }
+}
+
+' -- RELACIONES --
+
+' Flujo Cliente -> API
+Frontend --> API : "HTTP/REST (JSON) + SignalR (WSS)"
+note on link
+  Autenticación vía
+  Bearer Token (JWT)
+end note
+
+' Flujo API -> Datos
+API --> MySQL : "TCP (Entity Framework Core)"
+API --> Redis : "TCP (StackExchange.Redis)"
+
+' Flujo API -> Infraestructura Externa
+API ..> K8sAPI : "HTTPS (KubernetesClient)\nPuerto 6443"
+
+@enduml

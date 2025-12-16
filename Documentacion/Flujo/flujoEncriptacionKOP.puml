@@ -1,0 +1,64 @@
+@startuml
+autonumber
+title Flujo de Encriptación AES (Encryption at Rest)
+
+participant "Backend App\n(ClusterService)" as App
+participant "EncryptionService" as Crypto
+participant "Configuración\n(appsettings.json)" as Config
+database "MySQL Database" as DB
+
+' == FASE DE ENCRIPTADO ==
+group Fase 1: Encriptar (Guardar Datos)
+    App -> App: Recibe Token Plano\n(Ej: "eyJhGb...")
+    
+    App -> Crypto: Encrypt("eyJhGb...")
+    activate Crypto
+    
+    Crypto -> Config: Leer "Encryption:CurrentVersion" (Ej: "v1")
+    Crypto -> Config: Leer Key & IV para "v1"
+    
+    Crypto -> Crypto: Cifrar bytes usando AES-256
+    
+    Crypto --> App: Retorna Cifrado (Ej: "S9d/7F...")
+    deactivate Crypto
+    
+    App -> DB: INSERT (Token="S9d/7F...", Version="v1")
+    activate DB
+    note right of DB
+      En el disco duro solo se
+      guarda basura ilegible.
+    end note
+    deactivate DB
+end
+
+|||
+
+' == FASE DE DESENCRIPTADO ==
+group Fase 2: Desencriptar (Leer Datos)
+    App -> DB: GetCluster()
+    activate DB
+    DB --> App: Retorna { Token: "S9d/7F...", Version: "v1" }
+    deactivate DB
+    
+    App -> Crypto: Decrypt("S9d/7F...", "v1")
+    activate Crypto
+    
+    note right of Crypto
+      El servicio mira la versión ("v1")
+      para saber qué llave histórica usar.
+    end note
+    
+    Crypto -> Config: Obtener Key & IV para "v1"
+    
+    Crypto -> Crypto: Descifrar bytes
+    
+    Crypto --> App: Retorna Token Plano ("eyJhGb...")
+    deactivate Crypto
+    
+    App -> App: Usa el Token en Memoria RAM
+    note left
+      El dato real solo existe
+      mientras se usa.
+    end note
+end
+@enduml
