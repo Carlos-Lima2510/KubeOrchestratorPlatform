@@ -1,4 +1,6 @@
+using System.Net;
 using k8s;
+using k8s.Autorest;
 using k8s.Models;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Core;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Pagination;
@@ -46,6 +48,20 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Core
 
                 await client.CoreV1.CreateNamespacedSecretAsync(secret, dto.Namespace);
                 auditService.LogOperation(userName, clusterName, $"CreateSecret: {dto.Name}", true);
+            }
+            catch (HttpOperationException ex)
+            {
+                string cleanMessage = ex.Message;
+
+                if (ex.Response.StatusCode == HttpStatusCode.Conflict)
+                {
+                    cleanMessage = $"El secreto '{dto.Name}' ya existe en el namespace '{dto.Namespace}'.";
+                    auditService.LogOperation(userName, clusterName, $"CreateSecret: {dto.Name}", false, "Conflict: AlreadyExists");
+                    throw new InvalidOperationException(cleanMessage);
+                }
+
+                auditService.LogOperation(userName, clusterName, $"CreateSecret: {dto.Name}", false, ex.Message);
+                throw;
             }
             catch (Exception ex)
             {

@@ -1,3 +1,4 @@
+using k8s.Autorest;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Core;
@@ -45,9 +46,28 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         {
             var userId = currentUserService.UserId;
             dto.Namespace = namespaceName;
-            
-            await secretService.CreateAsync(userId, clusterId, dto);
-            return Ok(new { Message = "Secreto creado exitosamente" });
+
+            try
+            {
+                await secretService.CreateAsync(userId, clusterId, dto);
+                return Ok(new { Message = "Secreto creado exitosamente" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { Message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (HttpOperationException ex)
+            {
+                return StatusCode((int)ex.Response.StatusCode, new { Message = "Error de Kubernetes: " + ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Error interno del servidor", Details = ex.Message });
+            }
         }
 
         [HttpDelete("{name}")]
