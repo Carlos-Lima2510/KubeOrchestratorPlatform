@@ -24,6 +24,8 @@ using Servidor.KubeOrchestratorPlatform.Services.Network;
 using Servidor.KubeOrchestratorPlatform.Services.Pods;
 using Servidor.KubeOrchestratorPlatform.Services.Metrics;
 using Servidor.Hubs;
+using Servidor.KubeOrchestratorPlatform.Services.Core;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace Servidor
 {
@@ -110,6 +112,8 @@ namespace Servidor
                 builder.Services.AddScoped<IClusterService, ClusterService>();
                 builder.Services.AddScoped<IClusterConfigurationService, ClusterConfigurationService>();
                 builder.Services.AddScoped<INamespaceService, NamespaceService>();
+                builder.Services.AddScoped<IConfigMapService, ConfigMapService>();
+                builder.Services.AddScoped<ISecretService, SecretService>();
 
                 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
                 builder.Services.AddScoped<IAuthService, AuthService>();
