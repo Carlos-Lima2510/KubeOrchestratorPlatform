@@ -5,6 +5,10 @@ namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Core
     public class CreateConfigMapDTO
     {
         [Required]
+        
+        [RegularExpression(@"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", 
+            ErrorMessage = "El nombre debe ser minúsculas, números o guiones y no puede empezar/terminar con guión.")]
+        [StringLength(63, ErrorMessage = "El nombre no puede exceder los 63 caracteres.")]
         public string Name { get; set; } = string.Empty;
         
         [Required]
