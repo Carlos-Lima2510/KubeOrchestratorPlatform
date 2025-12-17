@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using Servidor.KubeOrchestratorPlatform.Models.DTOs.Enums;
+using Servidor.KubeOrchestratorPlatform.Models.Enums;
 
 namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments.CreateDeploymentSpecs.ContainerSpecs
 {

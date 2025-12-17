@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Servidor.KubeOrchestratorPlatform.Models.DTOs.Enums
+namespace Servidor.KubeOrchestratorPlatform.Models.Enums
 {
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum StrategyType
