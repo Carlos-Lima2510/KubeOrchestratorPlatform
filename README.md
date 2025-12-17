@@ -136,14 +136,3 @@ Encryption__CurrentVersion=v1
 Encryption__Keys__v1__Key=TU_KEY_GENERADA_EN_BASE64==
 Encryption__Keys__v1__IV=TU_IV_GENERADO_EN_BASE64==
 ```
-
-### Sección de Arquitectura y Final
----
-
-## 📐 Arquitectura del Sistema
-
-KubeOrchestrator implementa una arquitectura moderna **Híbrida (REST + Streaming)**:
-
-1.  **Core API (REST):** Maneja la autenticación (JWT), gestión de usuarios y operaciones CRUD sobre los recursos de Kubernetes (Deployments, Services, etc.).
-2.  **Streaming Engine (SignalR):** Un canal **WebSocket** dedicado que "empuja" (Push) métricas de CPU y RAM desde el clúster hacia el frontend en tiempo real, eliminando la necesidad de recargar la página.
-3.  **Security Layer (AES):** Un servicio de encriptación intermedio que asegura que el archivo `kubeconfig` nunca se almacene en texto plano. Las credenciales solo se desencriptan en la memoria volátil del servidor durante el uso.
