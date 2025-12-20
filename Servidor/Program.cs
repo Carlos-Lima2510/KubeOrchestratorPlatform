@@ -21,6 +21,7 @@ using Servidor.KubeOrchestratorPlatform.Services.Auth;
 using Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration;
 using Servidor.KubeOrchestratorPlatform.Services.Deployment;
 using Servidor.KubeOrchestratorPlatform.Services.Network;
+using Servidor.KubeOrchestratorPlatform.Services.Ingress;
 using Servidor.KubeOrchestratorPlatform.Services.Pods;
 using Servidor.KubeOrchestratorPlatform.Services.Metrics;
 using Servidor.Hubs;
@@ -114,6 +115,7 @@ namespace Servidor
                 builder.Services.AddScoped<INamespaceService, NamespaceService>();
                 builder.Services.AddScoped<IConfigMapService, ConfigMapService>();
                 builder.Services.AddScoped<ISecretService, SecretService>();
+                builder.Services.AddScoped<IIngressService, IngressService>();
 
                 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
                 builder.Services.AddScoped<IAuthService, AuthService>();
