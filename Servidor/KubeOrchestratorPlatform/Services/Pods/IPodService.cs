@@ -6,5 +6,6 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Pods
     {
         Task<IEnumerable<PodDTO>> GetByDeploymentAsync(int userId, string clusterId, string namespaceName, string deploymentName);
         Task<Stream> GetLogsAsync(int userId, string clusterId, string namespaceName, string podName, string containerName);
+        Task<bool> IsPodReadyAsync(int userId, string clusterId, string namespaceName, string podName);
     }
 }

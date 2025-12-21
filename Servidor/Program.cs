@@ -24,6 +24,7 @@ using Servidor.KubeOrchestratorPlatform.Services.Network;
 using Servidor.KubeOrchestratorPlatform.Services.Ingress;
 using Servidor.KubeOrchestratorPlatform.Services.Pods;
 using Servidor.KubeOrchestratorPlatform.Services.Metrics;
+using Servidor.KubeOrchestratorPlatform.Services.Observability;
 using Servidor.Hubs;
 using Servidor.KubeOrchestratorPlatform.Services.Core;
 using Microsoft.AspNetCore.DataProtection;
@@ -122,6 +123,7 @@ namespace Servidor
 
                 builder.Services.AddScoped<IDeploymentService, DeploymentService>();
                 builder.Services.AddScoped<INetworkService, NetworkService>();
+                builder.Services.AddScoped<INetworkMapService, NetworkMapService>();
                 builder.Services.AddScoped<IPodService, PodService>();
                 builder.Services.AddScoped<IMetricsService, MetricsService>();
 
@@ -190,6 +192,7 @@ namespace Servidor
                 app.MapControllers();
 
                 app.MapHub<ClusterHub>("/hubs/cluster");
+                app.MapHub<TerminalHub>("/hubs/terminal");
 
                 using (var scope = app.Services.CreateScope())
                 {

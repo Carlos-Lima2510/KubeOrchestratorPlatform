@@ -100,5 +100,12 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Pods
                 Containers = pod.Spec.Containers.Select(c => c.Name).ToList()
             };
         }
+
+        public async Task<bool> IsPodReadyAsync(int userId, string clusterId, string namespaceName, string podName)
+        {
+            var client = connection.GetClient(userId, clusterId);
+            var pod = await client.CoreV1.ReadNamespacedPodAsync(podName, namespaceName);
+            return pod.Status.Phase == "Running";
+        }
     }
 }
