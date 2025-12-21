@@ -9,12 +9,10 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Observability
     public class NetworkMapService : INetworkMapService
     {
         private readonly IKubernetesUserClientConnection clientConnection;
-        private readonly IMetricsService metricsService;
 
-        public NetworkMapService(IKubernetesUserClientConnection clientConnection, IMetricsService metricsService)
+        public NetworkMapService(IKubernetesUserClientConnection clientConnection)
         {
             this.clientConnection = clientConnection;
-            this.metricsService = metricsService;
         }
 
         public async Task<NetworkGraphDTO> GetNetworkMapAsync(int userId, string clusterId, string namespaceName)
@@ -140,7 +138,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Observability
             return graph;
         }
 
-        private string FormatCpuUsage(List<ResourceQuantity> usages)
+        private string FormatCpuUsage(List<ResourceQuantity>? usages)
         {
             if (usages == null || !usages.Any()) return "0m";
 
@@ -154,7 +152,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Observability
             return $"{millicores}m";
         }
 
-        private string FormatMemoryUsage(List<ResourceQuantity> usages)
+        private string FormatMemoryUsage(List<ResourceQuantity>? usages)
         {
             if (usages == null || !usages.Any()) return "0Mi";
 
