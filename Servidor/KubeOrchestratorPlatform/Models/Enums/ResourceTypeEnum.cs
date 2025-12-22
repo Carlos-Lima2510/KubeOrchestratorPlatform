@@ -7,6 +7,8 @@ namespace Servidor.KubeOrchestratorPlatform.Models.Enums
     {
         Ingress,
         Service,
-        Pod
+        Pod,
+        Missing,
+        Error404
     }
 }

@@ -27,6 +27,7 @@ using Servidor.KubeOrchestratorPlatform.Services.Metrics;
 using Servidor.Hubs;
 using Servidor.KubeOrchestratorPlatform.Services.Core;
 using Microsoft.AspNetCore.DataProtection;
+using Servidor.KubeOrchestratorPlatform.Services.Graph;
 
 namespace Servidor
 {
@@ -124,6 +125,7 @@ namespace Servidor
                 builder.Services.AddScoped<INetworkService, NetworkService>();
                 builder.Services.AddScoped<IPodService, PodService>();
                 builder.Services.AddScoped<IMetricsService, MetricsService>();
+                builder.Services.AddScoped<IGraphService, GraphService>();
 
                 builder.Services.AddScoped<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
                 builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
