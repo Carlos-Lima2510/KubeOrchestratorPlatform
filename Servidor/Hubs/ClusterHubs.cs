@@ -2,36 +2,41 @@ using k8s;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Servidor.KubeOrchestratorPlatform.Factories.Client;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs.Graph;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Pods;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using Servidor.KubeOrchestratorPlatform.Services.Deployment;
+using Servidor.KubeOrchestratorPlatform.Services.Graph;
 using Servidor.KubeOrchestratorPlatform.Services.Metrics;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
 
 namespace Servidor.Hubs
 {
-    [Authorize] 
+    [Authorize]
     public class ClusterHub : Hub
     {
         private readonly IMetricsService metricsService;
-        private readonly IKubernetesUserClientConnection clientConnection; 
+        private readonly IKubernetesUserClientConnection clientConnection;
         private readonly ILogger<ClusterHub> logger;
         private readonly IDeploymentService deploymentService;
+        private readonly IGraphService graphService;
 
         public ClusterHub(
-            IMetricsService metricsService, 
-            ILogger<ClusterHub> logger, 
+            IMetricsService metricsService,
+            ILogger<ClusterHub> logger,
             IKubernetesUserClientConnection clientConnection,
-            IDeploymentService deploymentService)
+            IDeploymentService deploymentService,
+            IGraphService graphService)
         {
             this.metricsService = metricsService;
             this.logger = logger;
             this.clientConnection = clientConnection;
             this.deploymentService = deploymentService;
+            this.graphService = graphService;
         }
         public async IAsyncEnumerable<object> StreamClusterMetrics(
-            string clusterId, 
+            string clusterId,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             var userIdClaim = Context.User?.FindFirst("id")?.Value;
@@ -45,7 +50,7 @@ namespace Servidor.Hubs
             while (!cancellationToken.IsCancellationRequested)
             {
                 object? result = null;
-                try 
+                try
                 {
                     var metrics = await metricsService.GetClusterMetricsAsync(userId, clusterId);
                     result = metrics.FirstOrDefault();
@@ -60,18 +65,21 @@ namespace Servidor.Hubs
                     yield return result;
                 }
 
-                try {
+                try
+                {
                     await Task.Delay(5000, cancellationToken);
-                } catch (TaskCanceledException) {
-                    break; 
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
                 }
             }
-            
+
             logger.LogInformation("Stream finalizado para Usuario {UserId}", userId);
         }
 
         public async IAsyncEnumerable<object> StreamClusterStatus(
-            string clusterId, 
+            string clusterId,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             var userIdClaim = Context.User?.FindFirst("id")?.Value;
@@ -86,9 +94,9 @@ namespace Servidor.Hubs
                 try
                 {
                     var client = clientConnection.GetClient(userId, clusterId);
-                    
+
                     using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                    
+
                     var version = await client.Version.GetCodeAsync(cancellationToken: cts.Token);
 
                     result = new { Status = "Online", Version = version.GitVersion, Message = "Conectado" };
@@ -101,15 +109,15 @@ namespace Servidor.Hubs
 
                 yield return result;
 
-                try { await Task.Delay(30000, cancellationToken); } 
+                try { await Task.Delay(30000, cancellationToken); }
                 catch { break; }
             }
         }
 
         public async IAsyncEnumerable<IEnumerable<PodDTO>> StreamDeploymentPods(
-            string clusterId, 
-            string namespaceName, 
-            string deploymentName, 
+            string clusterId,
+            string namespaceName,
+            string deploymentName,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             var httpContext = Context.GetHttpContext();
@@ -123,7 +131,7 @@ namespace Servidor.Hubs
             while (!cancellationToken.IsCancellationRequested)
             {
                 object? result = null;
-                try 
+                try
                 {
                     var pods = await deploymentService.GetPodsAsync(userId, clusterId, namespaceName, deploymentName);
                     result = pods;
@@ -138,11 +146,42 @@ namespace Servidor.Hubs
                     yield return podDtos;
                 }
 
-                try {
+                try
+                {
                     await Task.Delay(3000, cancellationToken);
-                } catch (TaskCanceledException) {
-                    break; 
                 }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+        public async IAsyncEnumerable<GraphDTO> StreamGraph(
+            string clusterId,
+            string namespaceName,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            var userIdClaim = Context.User?.FindFirst("id")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                throw new HubException("Usuario no identificado");
+            }
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                GraphDTO? result = null;
+                try
+                {
+                    result = await graphService.GetFullTopologyAsync(userId, clusterId, namespaceName);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error al generar topología en tiempo real");
+                }
+
+                if (result != null) yield return result;
+
+                await Task.Delay(10000, cancellationToken);
             }
         }
     }

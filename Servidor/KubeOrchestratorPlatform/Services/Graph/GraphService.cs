@@ -5,6 +5,7 @@ using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using Servidor.KubeOrchestratorPlatform.Services.Ingress;
 using Servidor.KubeOrchestratorPlatform.Services.Network;
 using Servidor.KubeOrchestratorPlatform.Models.Enums;
+using Servidor.KubeOrchestratorPlatform.Services.Metrics;
 using System.Security.Cryptography.X509Certificates;
 
 namespace Servidor.KubeOrchestratorPlatform.Services.Graph
@@ -14,15 +15,18 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
         private readonly IKubernetesUserClientConnection clientConnection;
         private readonly IIngressService ingressService;
         private readonly INetworkService networkService;
+        private readonly IMetricsService metricsService;
 
         public GraphService(
             IIngressService ingressService,
             INetworkService networkService,
-            IKubernetesUserClientConnection clientConnection)
+            IKubernetesUserClientConnection clientConnection,
+            IMetricsService metricsService)
         {
             this.ingressService = ingressService;
             this.networkService = networkService;
             this.clientConnection = clientConnection;
+            this.metricsService = metricsService;
         }
 
         public async Task<GraphDTO> GetFullTopologyAsync(int userId, string clusterId, string namespaceName)
@@ -33,11 +37,13 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
             var ingresses = await ingressService.GetAllAsync(userId, clusterId, namespaceName);
             var services = await networkService.GetAllAsync(userId, clusterId, namespaceName);
             var pods = await client.CoreV1.ListNamespacedPodAsync(namespaceName);
+            var networkPolicies = await client.NetworkingV1.ListNamespacedNetworkPolicyAsync(namespaceName);
+            var metrics = await metricsService.GetClusterMetricsAsync(userId, clusterId);
 
             foreach (var ingress in ingresses)
             {
                 var node = BuildIngressNode(ingress);
-                await EnrichTlsInfo(node, ingress, client, namespaceName);
+                await EnrichTlsSecurity(node, ingress, client, namespaceName);
 
                 graph.Nodes.Add(node);
 
@@ -70,13 +76,20 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
                 foreach (var pod in matchingPods)
                 {
                     var podNodeId = $"pod-{pod.Metadata.Uid}";
-                    AddPodNode(graph, pod, podNodeId);
+
+                    var podMetric = metrics.FirstOrDefault();
+
+                    bool isBlocked = EvaluateNetworkPolicy(pod, networkPolicies.Items);
+
+                    AddPodNode(graph, pod, podNodeId, podMetric?.CpuUsage.ToString(), podMetric?.MemoryUsage.ToString());
+
                     graph.Edges.Add(new GraphEdgeDTO
                     {
                         Id = $"edge-{svc.Metadata.Uid}-{pod.Metadata.Uid}",
                         SourceId = svcNodeId,
                         TargetId = podNodeId,
-                        Status = healthStatus
+                        Status = isBlocked ? "Blocked" : healthStatus,
+                        Metadata = new { isBlocked = isBlocked.ToString().ToLower() }
                     });
                 }
             }
@@ -84,12 +97,27 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
             return graph;
         }
 
-        private void AddPodNode(GraphDTO graph, V1Pod pod, string podNodeId)
+        private bool EvaluateNetworkPolicy(V1Pod pod, IList<V1NetworkPolicy> policies)
+        {
+            if (!policies.Any()) return false;
+
+            var podPolicies = policies.Where(p => SelectorMatches(p.Spec.PodSelector, pod.Metadata.Labels)).ToList();
+
+            return podPolicies.Any();
+        }
+
+        private bool SelectorMatches(V1LabelSelector podSelector, IDictionary<string, string> labels)
+        {
+            if (podSelector.MatchLabels == null) return true;
+            return podSelector.MatchLabels.All(l => labels != null && labels.ContainsKey(l.Key) && labels[l.Key] == l.Value);
+        }
+
+        private void AddPodNode(GraphDTO graph, V1Pod pod, string podNodeId, string? cpu, string? mem)
         {
             string status = pod.Status.Phase switch
             {
-                "Running" => "Allowed", 
-                "Pending" => "Degraded", 
+                "Running" => "Allowed",
+                "Pending" => "Degraded",
                 "Failed" => "Broken",
                 _ => "Broken"
             };
@@ -116,6 +144,8 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
                 {
                     Ip = pod.Status.PodIP ?? "-",
                     NodeName = pod.Spec.NodeName ?? "Unassigned",
+                    Cpu = cpu ?? "0m",
+                    Mem = mem ?? "0Mi",
                     Ports = pod.Spec.Containers
                         .SelectMany(c => c.Ports ?? new List<V1ContainerPort>())
                         .Select(p => p.ContainerPort.ToString())
@@ -126,7 +156,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
 
         private string CalculateServiceHealth(IEnumerable<V1Pod> matchingPods)
         {
-            if (!matchingPods.Any()) return "Mismatch";
+            if (!matchingPods.Any()) return "Mismatch"; // Servicio huérfano
             if (matchingPods.All(p => p.Status.Phase == "Running")) return "Allowed";
             if (matchingPods.Any(p => p.Status.Phase == "Failed" || p.Status.Phase == "Unknown")) return "Broken";
             return "Degraded";
@@ -166,28 +196,47 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
             }
         }
 
-        private async Task EnrichTlsInfo(GraphNodeDTO node, V1Ingress ingress, IKubernetes client, string namespaceName)
+        private async Task EnrichTlsSecurity(GraphNodeDTO node, V1Ingress ingress, IKubernetes client, string namespaceName)
         {
             var tlsSecretName = ingress.Spec.Tls?.FirstOrDefault()?.SecretName;
             if (string.IsNullOrEmpty(tlsSecretName)) return;
 
             try
             {
+                node.Metadata ??= new GraphNodeMetadata();
+
                 var secret = await client.CoreV1.ReadNamespacedSecretAsync(tlsSecretName, namespaceName);
+
                 if (secret.Data.TryGetValue("tls.crt", out byte[]? certData))
                 {
-                    var cert = new X509Certificate2(certData);
-                    var metadata = node.Metadata!;
-                    metadata.Issuer = cert.Issuer;
-                    metadata.ExpirationDate = cert.NotAfter;
+                    try
+                    {
+                        var cert = new X509Certificate2(certData);
+                        var fechaDeExpiracion = cert.NotAfter;
 
-                    if (cert.NotAfter < DateTime.UtcNow)
-                        node.Status = "Expired";
+                        node.Metadata.Issuer = cert.Issuer;
+                        node.Metadata.ExpirationDate = fechaDeExpiracion;
+
+                        if (fechaDeExpiracion < DateTime.UtcNow)
+                        {
+                            node.Status = "Expired";
+                        }
+                        else
+                        {
+                            node.Status = "Allowed";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        node.Status = "Incompatible";
+                        node.Metadata.Issuer = "Error: Formato no soportado";
+                    }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                throw;
+                node.Status = "Incompatible";
+                node.Metadata.Issuer = "Error: Sin acceso a Secretos";
             }
         }
 
