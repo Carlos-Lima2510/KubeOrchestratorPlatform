@@ -54,7 +54,7 @@ Sigue estos pasos para levantar el entorno de desarrollo completo.
 
 ### 1. Clonar el repositorio
 ```bash
-git clone [https://github.com/tu-usuario/KubeOrchestratorPlatform.git](https://github.com/tu-usuario/KubeOrchestratorPlatform.git)
+git clone https://github.com/tu-usuario/KubeOrchestratorPlatform.git
 cd KubeOrchestratorPlatform
 ```
 
