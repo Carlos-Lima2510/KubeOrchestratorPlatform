@@ -43,6 +43,18 @@ services:
       - "6380:6379"
     networks:
       - kube-net
+  phpmyadmin:
+    image: phpmyadmin:5.2.0
+    container_name: phpmyadmin
+    environment:
+      PMA_HOST: mysql_db
+      PMA_PORT: 3306
+    ports:
+      - "8081:80"
+    networks:
+      - kube-net
+    depends_on:
+      - mysql_db
 
 networks:
   kube-net:
