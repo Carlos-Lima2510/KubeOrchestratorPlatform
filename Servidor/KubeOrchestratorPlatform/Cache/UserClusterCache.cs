@@ -1,17 +1,20 @@
 using System.Text.Json;
 using StackExchange.Redis;
 using Servidor.KubeOrchestratorPlatform.Models;
+using Servidor.KubeOrchestratorPlatform.Services.Security;
 
 namespace Servidor.KubeOrchestratorPlatform.Cache
 {
     public class UserClusterCache : IUserClusterCache
     {
         private readonly IDatabase database;
+        private readonly IEncryptionService encryptionService;
         private readonly string prefix = "usercluster:";
 
-        public UserClusterCache(IConnectionMultiplexer redis)
+        public UserClusterCache(IConnectionMultiplexer redis, IEncryptionService encryptionService)
         {
             database = redis.GetDatabase();
+            this.encryptionService = encryptionService;
         }
 
         private string Key(int userId, string clusterId) => $"{prefix}{userId}:{clusterId}";
@@ -49,10 +52,10 @@ namespace Servidor.KubeOrchestratorPlatform.Cache
                     Credentials = new ClusterCredentials
                     {
                         Id = cacheModel.CredentialId,
-                        Token = cacheModel.Token,
-                        CertificateAuthorityData = cacheModel.CertificateAuthorityData,
-                        ClientCertificateData = cacheModel.ClientCertificateData,
-                        ClientKeyData = cacheModel.ClientKeyData,
+                        Token = encryptionService.Decrypt(cacheModel.Token!, cacheModel.EncryptionVersion),
+                        CertificateAuthorityData = encryptionService.Decrypt(cacheModel.CertificateAuthorityData!, cacheModel.EncryptionVersion),
+                        ClientCertificateData = encryptionService.Decrypt(cacheModel.ClientCertificateData!, cacheModel.EncryptionVersion),
+                        ClientKeyData = encryptionService.Decrypt(cacheModel.ClientKeyData!, cacheModel.EncryptionVersion),
                         AuthType = cacheModel.AuthType
                     }
                 };
@@ -74,11 +77,12 @@ namespace Servidor.KubeOrchestratorPlatform.Cache
                     Username = cluster.User?.Username ?? "Unknown", 
 
                     CredentialId = cluster.Credentials?.Id ?? 0,
-                    Token = cluster.Credentials?.Token,
-                    CertificateAuthorityData = cluster.Credentials?.CertificateAuthorityData,
-                    ClientCertificateData = cluster.Credentials?.ClientCertificateData,
-                    ClientKeyData = cluster.Credentials?.ClientKeyData,
-                    AuthType = cluster.Credentials?.AuthType ?? "Token"
+                    Token = encryptionService.Encrypt(cluster.Credentials?.Token!),
+                    CertificateAuthorityData = encryptionService.Encrypt(cluster.Credentials?.CertificateAuthorityData!),
+                    ClientCertificateData = encryptionService.Encrypt(cluster.Credentials?.ClientCertificateData!),
+                    ClientKeyData = encryptionService.Encrypt(cluster.Credentials?.ClientKeyData!),
+                    AuthType = cluster.Credentials?.AuthType ?? "Token",
+                    EncryptionVersion = encryptionService.CurrentVersion
                 };
                 
                 var json = JsonSerializer.Serialize(cacheModel);
