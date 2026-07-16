@@ -29,6 +29,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Security
         private static bool IsBlockedMetadataAddress(IPAddress ip)
         {
             if (ip.IsIPv6LinkLocal) return true;
+            if (IPAddress.IsLoopback(ip)) return true;
 
             if (ip.AddressFamily == AddressFamily.InterNetwork)
             {

@@ -6,5 +6,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Auth
     {
         Task<AuthResponseDto> RegisterAsync(RegisterDto request);
         Task<AuthResponseDto> LoginAsync(LoginDto request);
+        Task<AuthResponseDto> RefreshAsync(string refreshToken);
+        Task RevokeAsync(string refreshToken);
     }
 }

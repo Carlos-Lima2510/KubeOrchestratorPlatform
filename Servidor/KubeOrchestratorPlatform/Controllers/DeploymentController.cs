@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
@@ -7,6 +8,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
     [ApiController]
     [Route("api/clusters/{clusterId}/deployments")]
+    [Authorize]
     public class DeploymentsController : ControllerBase
     {
         private readonly IDeploymentService deploymentService;
@@ -45,7 +47,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex) 
             { 
-                return StatusCode(500, new { Error = ex.Message }); 
+                return StatusCode(500, new { Message = ex.Message }); 
             }
         }
 
@@ -69,7 +71,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex) 
             { 
-                return StatusCode(500, new { Error = ex.Message }); 
+                return StatusCode(500, new { Message = ex.Message }); 
             }
         }
 
@@ -98,7 +100,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex) 
             { 
-                return StatusCode(500, new { Error = ex.Message }); 
+                return StatusCode(500, new { Message = ex.Message }); 
             }
         }
 
@@ -122,7 +124,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex) 
             { 
-                return StatusCode(500, new { Error = ex.Message }); 
+                return StatusCode(500, new { Message = ex.Message }); 
             }
         }
     }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
@@ -7,6 +8,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
     [ApiController]
     [Route("api/clusters/{clusterId}/namespaces")]
+    [Authorize]
     public class NamespacesController : ControllerBase
     {
         private readonly INamespaceService namespaceService;
@@ -29,7 +31,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
 
@@ -51,7 +53,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
 
@@ -70,7 +72,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
 
@@ -91,7 +93,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
     }

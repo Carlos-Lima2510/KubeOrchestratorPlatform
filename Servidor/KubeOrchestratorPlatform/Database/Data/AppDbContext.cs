@@ -8,6 +8,7 @@ namespace Servidor.KubeOrchestratorPlatform.Database.Data
         public DbSet<User> Users { get; set; } = null!;
         public DbSet<ConnectedCluster> ConnectedClusters { get; set; } = null!;
         public DbSet<ClusterCredentials> ClusterCredentials { get; set; } = null!;
+        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -41,6 +42,16 @@ namespace Servidor.KubeOrchestratorPlatform.Database.Data
             modelBuilder.Entity<ConnectedCluster>()
                 .HasIndex(c => new { c.UserId, c.PublicClusterId, c.Context })
                 .IsUnique();
+
+            // Relation: User -> RefreshTokens (1:N)
+            modelBuilder.Entity<RefreshToken>()
+                .HasIndex(rt => rt.TokenHash)
+                .IsUnique();
+            modelBuilder.Entity<RefreshToken>()
+                .HasOne(rt => rt.User)
+                .WithMany()
+                .HasForeignKey(rt => rt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

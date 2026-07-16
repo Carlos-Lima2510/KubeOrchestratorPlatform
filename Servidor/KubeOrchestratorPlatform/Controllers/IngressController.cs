@@ -41,7 +41,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
                 return Ok(result);
             }
-            catch (Exception ex) { return StatusCode(500, new { Error = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { Message = ex.Message }); }
         }
 
         [HttpPost]
@@ -56,11 +56,11 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (k8s.Autorest.HttpOperationException ex)
             {
-                return StatusCode((int)ex.Response.StatusCode, new { Error = ex.Response.Content });
+                return StatusCode((int)ex.Response.StatusCode, new { Message = ex.Response.Content });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
 
@@ -73,7 +73,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
                 await ingressService.DeleteAsync(userId, clusterId, @namespace, name);
                 return Ok(new { Message = "Ingress eliminado." });
             }
-            catch (Exception ex) { return StatusCode(500, new { Error = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { Message = ex.Message }); }
         }
     }
 }

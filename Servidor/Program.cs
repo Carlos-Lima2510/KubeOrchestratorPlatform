@@ -29,6 +29,8 @@ using Servidor.KubeOrchestratorPlatform.Services.Core;
 using Microsoft.AspNetCore.DataProtection;
 using Servidor.KubeOrchestratorPlatform.Services.Graph;
 using Servidor.KubeOrchestratorPlatform.Services.Resources;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 namespace Servidor
 {
@@ -52,6 +54,12 @@ namespace Servidor
 
                 builder.Host.UseSerilog();
 
+                var jwtKey = builder.Configuration["Jwt:Key"];
+                if (string.IsNullOrWhiteSpace(jwtKey))
+                {
+                    throw new InvalidOperationException("No se ha definido 'Jwt:Key' en la configuración. Defina la variable de entorno Jwt__Key.");
+                }
+
                 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     .AddJwtBearer(options =>
                     {
@@ -63,7 +71,7 @@ namespace Servidor
                             ValidateIssuerSigningKey = true,
                             ValidIssuer = builder.Configuration["Jwt:Issuer"],
                             ValidAudience = builder.Configuration["Jwt:Audience"],
-                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
                         };
 
                         options.Events = new JwtBearerEvents
@@ -92,6 +100,21 @@ namespace Servidor
                                   .AllowAnyMethod()
                                   .AllowCredentials();
                         });
+                });
+
+                builder.Services.AddRateLimiter(options =>
+                {
+                    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+                    options.AddPolicy("auth", httpContext =>
+                        RateLimitPartition.GetFixedWindowLimiter(
+                            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                            factory: _ => new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit = 5,
+                                Window = TimeSpan.FromMinutes(1),
+                                QueueLimit = 0
+                            }));
                 });
 
                 var connectionString = builder.Configuration.GetConnectionString("MySql");
@@ -152,7 +175,14 @@ namespace Servidor
                 {
                     var host = builder.Configuration["REDIS_HOST"] ?? "localhost";
                     var port = builder.Configuration["REDIS_PORT"] ?? "6379";
+                    var redisPassword = builder.Configuration["REDIS_PASSWORD"];
+
                     redisConnectionString = $"{host}:{port}";
+                    if (!string.IsNullOrWhiteSpace(redisPassword))
+                    {
+                        redisConnectionString += $",password={redisPassword}";
+                    }
+
                     builder.Configuration["ConnectionStrings:Redis"] = redisConnectionString;
                 }
 
@@ -213,6 +243,8 @@ namespace Servidor
 
                 app.UseCors("AllowFrontend");
 
+                app.UseRateLimiter();
+
                 app.UseAuthentication();
                 app.UseAuthorization();
 
@@ -237,7 +269,8 @@ namespace Servidor
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "Ocurrió un error al intentar aplicar las migraciones automáticamente.");
+                        Log.Fatal(ex, "Ocurrió un error al intentar aplicar las migraciones automáticamente. La aplicación no puede continuar con un esquema de base de datos desincronizado.");
+                        throw;
                     }
                 }
 
@@ -246,6 +279,7 @@ namespace Servidor
             catch (Exception ex)
             {
                 Log.Fatal(ex, "La aplicación terminó inesperadamente");
+                Environment.ExitCode = 1;
             }
             finally
             {
