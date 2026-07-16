@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Network;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
@@ -7,6 +8,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
     [ApiController]
     [Route("api/clusters/{clusterId}/services")]
+    [Authorize]
     public class ServicesController : ControllerBase
     {
         private readonly INetworkService networkService;

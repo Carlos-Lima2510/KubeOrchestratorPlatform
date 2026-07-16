@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
@@ -7,6 +8,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
     [ApiController]
     [Route("api/clusters/{clusterId}/namespaces")]
+    [Authorize]
     public class NamespacesController : ControllerBase
     {
         private readonly INamespaceService namespaceService;

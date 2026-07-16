@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
 using Servidor.KubeOrchestratorPlatform.Services.Pods;
@@ -6,6 +7,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
     [ApiController]
     [Route("api/clusters/{clusterId}/pods")]
+    [Authorize]
     public class PodsController : ControllerBase
     {
         private readonly IPodService podService;

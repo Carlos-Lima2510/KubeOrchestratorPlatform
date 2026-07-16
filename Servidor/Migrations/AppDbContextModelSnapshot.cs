@@ -103,6 +103,40 @@ namespace Servidor.Migrations
                     b.ToTable("ConnectedClusters");
                 });
 
+            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -159,6 +193,17 @@ namespace Servidor.Migrations
                 {
                     b.HasOne("Servidor.KubeOrchestratorPlatform.Models.User", "User")
                         .WithMany("Clusters")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Servidor.KubeOrchestratorPlatform.Models.RefreshToken", b =>
+                {
+                    b.HasOne("Servidor.KubeOrchestratorPlatform.Models.User", "User")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

@@ -1,5 +1,6 @@
 using k8s;
 using k8s.Models;
+using Servidor.KubeOrchestratorPlatform.Models.DTOs;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Graph;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
 using Servidor.KubeOrchestratorPlatform.Services.Ingress;
@@ -38,7 +39,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
             var services = await networkService.GetAllAsync(userId, clusterId, namespaceName);
             var pods = await client.CoreV1.ListNamespacedPodAsync(namespaceName);
             var networkPolicies = await client.NetworkingV1.ListNamespacedNetworkPolicyAsync(namespaceName);
-            var podMetrics = await metricsService.GetPodMetricsAsync(userId, clusterId, namespaceName);
+            var podMetrics = await GetPodMetricsSafeAsync(userId, clusterId, namespaceName);
 
             foreach (var ingress in ingresses)
             {
@@ -95,6 +96,18 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
             }
 
             return graph;
+        }
+
+        private async Task<IDictionary<string, PodMetricsDTO>> GetPodMetricsSafeAsync(int userId, string clusterId, string namespaceName)
+        {
+            try
+            {
+                return await metricsService.GetPodMetricsAsync(userId, clusterId, namespaceName);
+            }
+            catch (Exception)
+            {
+                return new Dictionary<string, PodMetricsDTO>();
+            }
         }
 
         private bool EvaluateNetworkPolicy(V1Pod pod, IList<V1NetworkPolicy> policies)
