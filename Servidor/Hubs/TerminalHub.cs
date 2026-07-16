@@ -1,4 +1,5 @@
 // Servidor/Hubs/TerminalHub.cs
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using k8s;
 using Servidor.KubeOrchestratorPlatform.Services.Connection;
@@ -8,6 +9,7 @@ using System.Collections.Concurrent;
 
 namespace Servidor.Hubs
 {
+    [Authorize]
     public class TerminalHub : Hub
     {
         private readonly IKubernetesUserClientConnection clientConnection;

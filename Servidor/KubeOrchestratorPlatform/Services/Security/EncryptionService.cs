@@ -1,9 +1,13 @@
 using System.Security.Cryptography;
+using System.Text;
 
 namespace Servidor.KubeOrchestratorPlatform.Services.Security
 {
     public class EncryptionService : IEncryptionService
     {
+        private const int NonceSize = 12;
+        private const int TagSize = 16;
+
         private readonly IConfiguration configuration;
         public EncryptionService(IConfiguration configuration)
         {
@@ -19,20 +23,20 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Security
         {
             if (string.IsNullOrEmpty(cipherText)) return cipherText;
 
-            var (key, iv) = GetKeysForVersion(version);
+            var key = GetKeyForVersion(version);
+            var data = Convert.FromBase64String(cipherText);
+
+            var nonce = data.AsSpan(0, NonceSize);
+            var tag = data.AsSpan(data.Length - TagSize, TagSize);
+            var cipherBytes = data.AsSpan(NonceSize, data.Length - NonceSize - TagSize);
+            var plainBytes = new byte[cipherBytes.Length];
 
             try
             {
-                using var aes = Aes.Create();
-                aes.Key = key;
-                aes.IV = iv;
+                using var aesGcm = new AesGcm(key, TagSize);
+                aesGcm.Decrypt(nonce, cipherBytes, tag, plainBytes);
 
-                using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-                using var memoryStream = new MemoryStream(Convert.FromBase64String(cipherText));
-                using var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
-                using var streamReader = new StreamReader(cryptoStream);
-
-                return streamReader.ReadToEnd();
+                return Encoding.UTF8.GetString(plainBytes);
             }
             catch (CryptographicException)
             {
@@ -43,33 +47,32 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Security
         {
             if (string.IsNullOrEmpty(plainText)) return plainText;
 
-            var (key, iv) = GetKeysForVersion(version);
+            var key = GetKeyForVersion(version);
+            var nonce = RandomNumberGenerator.GetBytes(NonceSize);
+            var plainBytes = Encoding.UTF8.GetBytes(plainText);
+            var cipherBytes = new byte[plainBytes.Length];
+            var tag = new byte[TagSize];
 
-            using var aes = Aes.Create();
-            aes.Key = key;
-            aes.IV = iv;
+            using var aesGcm = new AesGcm(key, TagSize);
+            aesGcm.Encrypt(nonce, plainBytes, cipherBytes, tag);
 
-            using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-            using var memoryStream = new MemoryStream();
-            using var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write);
-            using var streamWriter = new StreamWriter(cryptoStream);
-            
-            streamWriter.Write(plainText);
-            streamWriter.Close(); 
+            var result = new byte[NonceSize + cipherBytes.Length + TagSize];
+            Buffer.BlockCopy(nonce, 0, result, 0, NonceSize);
+            Buffer.BlockCopy(cipherBytes, 0, result, NonceSize, cipherBytes.Length);
+            Buffer.BlockCopy(tag, 0, result, NonceSize + cipherBytes.Length, TagSize);
 
-            return Convert.ToBase64String(memoryStream.ToArray());
+            return Convert.ToBase64String(result);
         }
-        private (byte[] Key, byte[] IV) GetKeysForVersion(string version)
+        private byte[] GetKeyForVersion(string version)
         {
             var keyString = configuration[$"Encryption:Keys:{version}:Key"];
-            var ivString = configuration[$"Encryption:Keys:{version}:IV"];
 
-            if (string.IsNullOrEmpty(keyString) || string.IsNullOrEmpty(ivString))
+            if (string.IsNullOrEmpty(keyString))
             {
-                throw new InvalidOperationException($"No se encontraron claves de encriptación para la versión '{version}'. Verifique su configuración.");
+                throw new InvalidOperationException($"No se encontró clave de encriptación para la versión '{version}'. Verifique su configuración.");
             }
 
-            return (Convert.FromBase64String(keyString), Convert.FromBase64String(ivString));
+            return Convert.FromBase64String(keyString);
         }
     }
 }

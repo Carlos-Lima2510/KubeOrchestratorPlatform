@@ -8,6 +8,11 @@ services:
       - "5024:8080" 
     env_file:
       - .env
+    environment:
+      MYSQL_DB_HOST: mysql_db
+      MYSQL_DB_PORT: 3306
+      REDIS_HOST: redis_cache
+      REDIS_PORT: 6379
     depends_on:
       mysql_db:
         condition: service_healthy

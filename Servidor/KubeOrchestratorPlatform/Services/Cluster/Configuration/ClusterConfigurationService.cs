@@ -4,6 +4,7 @@ using Servidor.KubeOrchestratorPlatform.Models;
 using Servidor.KubeOrchestratorPlatform.Responses;
 using Servidor.KubeOrchestratorPlatform.Services.Audit;
 using Servidor.KubeOrchestratorPlatform.Services.Parser;
+using Servidor.KubeOrchestratorPlatform.Services.Security;
 
 namespace Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration
 {
@@ -13,17 +14,20 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration
         private readonly IKubeConfigParser parserService;
         private readonly IAuditService auditService;
         private readonly IKubernetesClientFactory clientFactory;
+        private readonly INetworkSafetyValidator networkSafetyValidator;
 
         public ClusterConfigurationService(
             IClusterService clusterService,
             IKubeConfigParser parserService,
             IAuditService auditService,
-            IKubernetesClientFactory clientFactory)
+            IKubernetesClientFactory clientFactory,
+            INetworkSafetyValidator networkSafetyValidator)
         {
             this.clusterService = clusterService;
             this.parserService = parserService;
             this.auditService = auditService;
             this.clientFactory = clientFactory;
+            this.networkSafetyValidator = networkSafetyValidator;
         }
         public Task DeleteConfigurationAsync(int userId, string clusterId)
         {
@@ -60,7 +64,9 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Cluster.Configuration
 
                 var parsed = parserService.Parse(yamlContent);
 
-                try 
+                await networkSafetyValidator.EnsureSafeClusterEndpointAsync(parsed.Server);
+
+                try
                 {
                     var tempClient = clientFactory.CreateClient(parsed);
                     

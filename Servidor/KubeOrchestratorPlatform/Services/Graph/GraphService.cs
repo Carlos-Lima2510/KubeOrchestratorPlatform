@@ -38,7 +38,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
             var services = await networkService.GetAllAsync(userId, clusterId, namespaceName);
             var pods = await client.CoreV1.ListNamespacedPodAsync(namespaceName);
             var networkPolicies = await client.NetworkingV1.ListNamespacedNetworkPolicyAsync(namespaceName);
-            var metrics = await metricsService.GetClusterMetricsAsync(userId, clusterId);
+            var podMetrics = await metricsService.GetPodMetricsAsync(userId, clusterId, namespaceName);
 
             foreach (var ingress in ingresses)
             {
@@ -77,11 +77,11 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
                 {
                     var podNodeId = $"pod-{pod.Metadata.Uid}";
 
-                    var podMetric = metrics.FirstOrDefault();
+                    podMetrics.TryGetValue(pod.Metadata.Name, out var podMetric);
 
                     bool isBlocked = EvaluateNetworkPolicy(pod, networkPolicies.Items);
 
-                    AddPodNode(graph, pod, podNodeId, podMetric?.CpuUsage.ToString(), podMetric?.MemoryUsage.ToString());
+                    AddPodNode(graph, pod, podNodeId, podMetric?.Cpu, podMetric?.Mem);
 
                     graph.Edges.Add(new GraphEdgeDTO
                     {
