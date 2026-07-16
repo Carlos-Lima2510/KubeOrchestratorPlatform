@@ -38,7 +38,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
 
@@ -57,7 +57,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
     }

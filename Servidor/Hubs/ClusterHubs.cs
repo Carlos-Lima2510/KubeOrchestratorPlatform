@@ -57,7 +57,7 @@ namespace Servidor.Hubs
                 }
                 catch (Exception ex)
                 {
-                    result = new { error = "Error obteniendo métricas", details = ex.Message };
+                    result = new { Message = "Error obteniendo métricas", Details = ex.Message };
                 }
 
                 if (result != null)
@@ -138,7 +138,7 @@ namespace Servidor.Hubs
                 }
                 catch (Exception ex)
                 {
-                    result = new { error = "Error sincronizando pods", details = ex.Message };
+                    result = new { Message = "Error sincronizando pods", Details = ex.Message };
                 }
 
                 if (result is IEnumerable<PodDTO> podDtos)

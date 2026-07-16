@@ -100,7 +100,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
 
@@ -122,11 +122,11 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Error procesando configuración.", details = ex.Message });
+                return StatusCode(500, new { Message = "Error procesando configuración.", Details = ex.Message });
             }
         }
 
@@ -138,15 +138,15 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
                 var userId = currentUserService.UserId;
                 await configurationService.DeleteConfigurationAsync(userId, clusterId);
 
-                return Ok(new { message = "Configuración eliminada correctamente." });
+                return Ok(new { Message = "Configuración eliminada correctamente." });
             }
             catch (KeyNotFoundException ex)
             {
-                return NotFound(new { message = ex.Message });
+                return NotFound(new { Message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = ex.Message });
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
 
@@ -161,7 +161,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "No se pudieron obtener las métricas. Asegúrese de tener 'metrics-server' instalado en el cluster.", details = ex.Message });
+                return StatusCode(500, new { Message = "No se pudieron obtener las métricas. Asegúrese de tener 'metrics-server' instalado en el cluster.", Details = ex.Message });
             }
         }
     }

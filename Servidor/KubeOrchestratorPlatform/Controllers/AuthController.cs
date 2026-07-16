@@ -27,7 +27,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(new { Message = ex.Message });
             }
         }
 
@@ -41,7 +41,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return Unauthorized(new { message = ex.Message });
+                return Unauthorized(new { Message = ex.Message });
             }
         }
 
@@ -55,7 +55,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return Unauthorized(new { message = ex.Message });
+                return Unauthorized(new { Message = ex.Message });
             }
         }
 
@@ -63,7 +63,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
         public async Task<IActionResult> Revoke([FromBody] RefreshRequestDto request)
         {
             await authService.RevokeAsync(request.RefreshToken);
-            return Ok(new { message = "Sesión cerrada correctamente." });
+            return Ok(new { Message = "Sesión cerrada correctamente." });
         }
     }
 }
