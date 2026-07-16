@@ -57,5 +57,33 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Metrics
                 throw new InvalidOperationException("METRICS_SERVER_MISSING");
             }
         }
+
+        public async Task<IDictionary<string, PodMetricsDTO>> GetPodMetricsAsync(int userId, string clusterId, string namespaceName)
+        {
+            var client = clientConnection.GetClient(userId, clusterId);
+
+            try
+            {
+                var podMetricsList = await client.GetKubernetesPodsMetricsByNamespaceAsync(namespaceName);
+
+                return podMetricsList.Items.ToDictionary(
+                    pod => pod.Metadata.Name,
+                    pod =>
+                    {
+                        double cpuCores = pod.Containers.Sum(c => (double)c.Usage["cpu"].ToDecimal());
+                        double memBytes = pod.Containers.Sum(c => (double)c.Usage["memory"].ToDecimal());
+
+                        return new PodMetricsDTO
+                        {
+                            Cpu = $"{Math.Round(cpuCores * 1000)}m",
+                            Mem = $"{Math.Round(memBytes / (1024.0 * 1024.0))}Mi"
+                        };
+                    });
+            }
+            catch (k8s.Autorest.HttpOperationException ex) when (ex.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return new Dictionary<string, PodMetricsDTO>();
+            }
+        }
     }
 }

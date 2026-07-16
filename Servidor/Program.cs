@@ -94,8 +94,22 @@ namespace Servidor
                         });
                 });
 
+                var connectionString = builder.Configuration.GetConnectionString("MySql");
+
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    var host = builder.Configuration["MYSQL_DB_HOST"] ?? builder.Configuration["MySql:Host"] ?? "localhost";
+                    var port = builder.Configuration["MYSQL_DB_PORT"] ?? builder.Configuration["MySql:Port"] ?? "3306";
+                    var database = builder.Configuration["MYSQL_DB_NAME"] ?? builder.Configuration["MySql:Database"] ?? "appdb";
+                    var user = builder.Configuration["MYSQL_DB_USER"] ?? builder.Configuration["MySql:User"] ?? "root";
+                    var password = builder.Configuration["MYSQL_DB_PASSWORD"] ?? builder.Configuration["MySql:Password"] ?? string.Empty;
+
+                    connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};";
+                    builder.Configuration["ConnectionStrings:MySql"] = connectionString;
+                }
+
                 builder.Services.AddDbContext<AppDbContext>(options =>
-                    options.UseMySql(builder.Configuration.GetConnectionString("MySql"),
+                    options.UseMySql(connectionString,
                                      new MySqlServerVersion(new Version(8, 0, 44)),
                                      mySqlOptions => mySqlOptions.EnableRetryOnFailure(
                                      maxRetryCount: 5,
@@ -132,9 +146,19 @@ namespace Servidor
                 builder.Services.AddScoped<IKubernetesUserClientConnection, KubernetesUserClientConnection>();
                 builder.Services.Decorate<IKubernetesUserClientConnection, LoggingKubernetesUserClientConnection>();
 
+                var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+
+                if (string.IsNullOrWhiteSpace(redisConnectionString))
+                {
+                    var host = builder.Configuration["REDIS_HOST"] ?? "localhost";
+                    var port = builder.Configuration["REDIS_PORT"] ?? "6379";
+                    redisConnectionString = $"{host}:{port}";
+                    builder.Configuration["ConnectionStrings:Redis"] = redisConnectionString;
+                }
+
                 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
                 {
-                    var redisConn = builder.Configuration.GetConnectionString("Redis")
+                    var redisConn = redisConnectionString
                         ?? throw new Exception("No se encontró la cadena de conexión de Redis.");
 
                     return ConnectionMultiplexer.Connect(redisConn);
@@ -145,6 +169,7 @@ namespace Servidor
                 builder.Services.AddSingleton<IKubernetesClientFactory, KubernetesClientFactory>();
                 builder.Services.AddSingleton<IKubeConfigParser, KubeConfigParser>();
                 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
+                builder.Services.AddSingleton<INetworkSafetyValidator, NetworkSafetyValidator>();
 
                 builder.Services.AddEndpointsApiExplorer();
 
