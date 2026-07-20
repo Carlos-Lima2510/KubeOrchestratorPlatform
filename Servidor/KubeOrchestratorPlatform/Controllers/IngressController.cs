@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
+using Servidor.KubeOrchestratorPlatform.Services.Errors;
 using Servidor.KubeOrchestratorPlatform.Services.Ingress;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Network.Ingress;
 
@@ -41,7 +42,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
                 return Ok(result);
             }
-            catch (Exception ex) { return StatusCode(500, new { Message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) }); }
         }
 
         [HttpPost]
@@ -56,11 +57,11 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (k8s.Autorest.HttpOperationException ex)
             {
-                return StatusCode((int)ex.Response.StatusCode, new { Message = ex.Response.Content });
+                return StatusCode((int)ex.Response.StatusCode, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = ex.Message });
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
 
@@ -73,7 +74,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
                 await ingressService.DeleteAsync(userId, clusterId, @namespace, name);
                 return Ok(new { Message = "Ingress eliminado." });
             }
-            catch (Exception ex) { return StatusCode(500, new { Message = ex.Message }); }
+            catch (Exception ex) { return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) }); }
         }
     }
 }

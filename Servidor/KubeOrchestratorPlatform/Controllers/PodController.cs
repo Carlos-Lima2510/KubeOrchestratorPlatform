@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
+using Servidor.KubeOrchestratorPlatform.Services.Errors;
 using Servidor.KubeOrchestratorPlatform.Services.Pods;
 
 namespace Servidor.KubeOrchestratorPlatform.Controllers
@@ -30,7 +31,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = ex.Message });
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
 

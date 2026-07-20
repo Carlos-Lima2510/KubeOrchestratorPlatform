@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Core;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
 using Servidor.KubeOrchestratorPlatform.Services.Core;
+using Servidor.KubeOrchestratorPlatform.Services.Errors;
 
 namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
@@ -46,16 +47,43 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             var userId = currentUserService.UserId;
             dto.Namespace = namespaceName;
 
-            await configMapService.CreateAsync(userId, clusterId, dto);
-            return Ok(new { Message = "ConfigMap creado exitosamente" });
+            try
+            {
+                await configMapService.CreateAsync(userId, clusterId, dto);
+                return Ok(new { Message = "ConfigMap creado exitosamente" });
+            }
+            catch (k8s.Autorest.HttpOperationException ex) when (ex.Response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                return Conflict(new { Message = $"Ya existe un config map llamado '{dto.Name}' en el namespace '{namespaceName}'." });
+            }
+            catch (k8s.Autorest.HttpOperationException ex)
+            {
+                return StatusCode((int)ex.Response.StatusCode, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
+            }
         }
 
         [HttpDelete("{name}")]
         public async Task<IActionResult> Delete(string clusterId, string namespaceName, string name)
         {
             var userId = currentUserService.UserId;
-            await configMapService.DeleteAsync(userId, clusterId, namespaceName, name);
-            return NoContent();
+
+            try
+            {
+                await configMapService.DeleteAsync(userId, clusterId, namespaceName, name);
+                return NoContent();
+            }
+            catch (k8s.Autorest.HttpOperationException ex) when (ex.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return NotFound(new { Message = $"El config map '{name}' no existe." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
+            }
         }
     }
 }

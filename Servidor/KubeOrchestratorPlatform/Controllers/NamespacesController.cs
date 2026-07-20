@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
+using Servidor.KubeOrchestratorPlatform.Services.Errors;
 using Servidor.KubeOrchestratorPlatform.Services.Namespace;
 
 namespace Servidor.KubeOrchestratorPlatform.Controllers
@@ -31,7 +32,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = ex.Message });
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
 
@@ -53,7 +54,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = ex.Message });
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
 
@@ -70,9 +71,13 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
                 return StatusCode(201, new { Message = $"Namespace '{request.Name}' creado exitosamente." });
             }
+            catch (k8s.Autorest.HttpOperationException ex)
+            {
+                return StatusCode((int)ex.Response.StatusCode, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
+            }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = ex.Message });
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
 
@@ -93,7 +98,7 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = ex.Message });
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
     }
