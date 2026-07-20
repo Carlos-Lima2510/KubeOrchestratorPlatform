@@ -70,6 +70,10 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
                 return StatusCode(201, new { Message = $"Namespace '{request.Name}' creado exitosamente." });
             }
+            catch (k8s.Autorest.HttpOperationException ex) when (ex.Response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                return Conflict(new { Message = $"El namespace '{request.Name}' ya existe." });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new { Message = ex.Message });
