@@ -155,6 +155,11 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
                         break;
                     }
                 }
+
+                if (status == "Allowed" && pod.Status.ContainerStatuses.Any(c => !c.Ready))
+                {
+                    status = "Degraded";
+                }
             }
 
             graph.Nodes.Add(new GraphNodeDTO
@@ -179,9 +184,17 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
 
         private string CalculateServiceHealth(IEnumerable<V1Pod> matchingPods)
         {
-            if (!matchingPods.Any()) return "Mismatch"; // Servicio huérfano
-            if (matchingPods.All(p => p.Status.Phase == "Running")) return "Allowed";
-            if (matchingPods.Any(p => p.Status.Phase == "Failed" || p.Status.Phase == "Unknown")) return "Broken";
+            var pods = matchingPods.ToList();
+            if (!pods.Any()) return "Mismatch"; // Servicio huérfano
+
+            // "Allowed" exige Running Y que todos sus contenedores hayan pasado el readinessProbe;
+            // si no, aunque estén "Running", no deberían estar recibiendo tráfico real todavía.
+            bool allRunningAndReady = pods.All(p =>
+                p.Status.Phase == "Running" &&
+                (p.Status.ContainerStatuses == null || p.Status.ContainerStatuses.All(c => c.Ready)));
+            if (allRunningAndReady) return "Allowed";
+
+            if (pods.Any(p => p.Status.Phase == "Failed" || p.Status.Phase == "Unknown")) return "Broken";
             return "Degraded";
         }
 
