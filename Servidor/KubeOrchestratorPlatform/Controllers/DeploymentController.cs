@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Workloads.Deployments;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
 using Servidor.KubeOrchestratorPlatform.Services.Deployment;
+using Servidor.KubeOrchestratorPlatform.Services.Errors;
 
 namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
@@ -45,9 +46,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
                 return Ok(result);
             }
-            catch (Exception ex) 
-            { 
-                return StatusCode(500, new { Message = ex.Message }); 
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
 
@@ -69,9 +70,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
 
                 return Ok(deployment);
             }
-            catch (Exception ex) 
-            { 
-                return StatusCode(500, new { Message = ex.Message }); 
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
 
@@ -98,9 +99,13 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             {
                 return Conflict(new { Message = $"Ya existe un deployment llamado '{dto.Name}' en el namespace '{dto.Namespace}'." });
             }
-            catch (Exception ex) 
-            { 
-                return StatusCode(500, new { Message = ex.Message }); 
+            catch (k8s.Autorest.HttpOperationException ex)
+            {
+                return StatusCode((int)ex.Response.StatusCode, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
 
@@ -122,9 +127,9 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             {
                 return NotFound(new { Message = $"El deployment '{name}' no existe, no se pudo eliminar." });
             }
-            catch (Exception ex) 
-            { 
-                return StatusCode(500, new { Message = ex.Message }); 
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
     }

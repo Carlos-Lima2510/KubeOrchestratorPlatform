@@ -77,11 +77,9 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
         {
             var matchLabels = new Dictionary<string, string> { { "app", dto.Name } };
 
-            var metadataLabels = new Dictionary<string, string>(dto.Labels)
-            {
-                { "app", dto.Name },
-                { "managed-by", "kube-orchestrator" }
-            };
+            var metadataLabels = new Dictionary<string, string>(dto.Labels);
+            metadataLabels["app"] = dto.Name;
+            metadataLabels["managed-by"] = "kube-orchestrator";
 
             return new V1Deployment
             {
@@ -258,6 +256,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Deployment
             var result = new Dictionary<string, ResourceQuantity>();
             foreach (var kv in resources)
             {
+                if (string.IsNullOrWhiteSpace(kv.Value)) continue;
                 result[kv.Key] = new ResourceQuantity(kv.Value);
             }
             return result;

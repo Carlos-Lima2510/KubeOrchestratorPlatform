@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Servidor.KubeOrchestratorPlatform.Models.DTOs.Core;
 using Servidor.KubeOrchestratorPlatform.Services.Auth;
 using Servidor.KubeOrchestratorPlatform.Services.Core;
+using Servidor.KubeOrchestratorPlatform.Services.Errors;
 
 namespace Servidor.KubeOrchestratorPlatform.Controllers
 {
@@ -62,11 +63,11 @@ namespace Servidor.KubeOrchestratorPlatform.Controllers
             }
             catch (HttpOperationException ex)
             {
-                return StatusCode((int)ex.Response.StatusCode, new { Message = "Error de Kubernetes: " + ex.Message });
+                return StatusCode((int)ex.Response.StatusCode, new { Message = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "Error interno del servidor", Details = ex.Message });
+                return StatusCode(500, new { Message = "Error interno del servidor", Details = KubernetesErrorHelper.GetFriendlyMessage(ex) });
             }
         }
 
