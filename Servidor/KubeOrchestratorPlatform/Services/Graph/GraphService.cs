@@ -114,9 +114,19 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
         {
             if (!policies.Any()) return false;
 
-            var podPolicies = policies.Where(p => SelectorMatches(p.Spec.PodSelector, pod.Metadata.Labels)).ToList();
+            var applicablePolicies = policies
+                .Where(p => SelectorMatches(p.Spec.PodSelector, pod.Metadata.Labels))
+                .Where(p => p.Spec.PolicyTypes == null || p.Spec.PolicyTypes.Contains("Ingress"))
+                .ToList();
 
-            return podPolicies.Any();
+            if (!applicablePolicies.Any()) return false;
+
+            bool hasUnrestrictedRule = applicablePolicies.Any(p =>
+                p.Spec.Ingress != null &&
+                p.Spec.Ingress.Any(rule => rule.FromProperty == null || !rule.FromProperty.Any())
+            );
+
+            return !hasUnrestrictedRule;
         }
 
         private bool SelectorMatches(V1LabelSelector podSelector, IDictionary<string, string> labels)
