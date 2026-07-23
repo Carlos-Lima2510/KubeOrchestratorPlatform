@@ -254,7 +254,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
 
         private bool ServiceExposesPort(V1Service svc, V1ServiceBackendPort? backendPort)
         {
-            if (backendPort == null) return true; // sin puerto declarado, no hay nada que validar
+            if (backendPort == null) return true;
 
             var ports = svc.Spec?.Ports;
             if (ports == null || !ports.Any()) return false;
