@@ -196,7 +196,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
         private string CalculateServiceHealth(IEnumerable<V1Pod> matchingPods)
         {
             var pods = matchingPods.ToList();
-            if (!pods.Any()) return "Mismatch"; // Servicio huérfano
+            if (!pods.Any()) return "Mismatch";
 
             bool allRunningAndReady = pods.All(p =>
                 p.Status.Phase == "Running" &&
