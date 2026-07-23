@@ -78,11 +78,13 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
                 {
                     var podNodeId = $"pod-{pod.Metadata.Uid}";
 
-                    podMetrics.TryGetValue(pod.Metadata.Name, out var podMetric);
+                    if (!graph.Nodes.Any(n => n.Id == podNodeId))
+                    {
+                        podMetrics.TryGetValue(pod.Metadata.Name, out var newPodMetric);
+                        AddPodNode(graph, pod, podNodeId, newPodMetric?.Cpu, newPodMetric?.Mem);
+                    }
 
                     bool isBlocked = EvaluateNetworkPolicy(pod, networkPolicies.Items);
-
-                    AddPodNode(graph, pod, podNodeId, podMetric?.Cpu, podMetric?.Mem);
 
                     graph.Edges.Add(new GraphEdgeDTO
                     {
@@ -93,6 +95,15 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
                         Metadata = new { isBlocked = isBlocked.ToString().ToLower() }
                     });
                 }
+            }
+
+            foreach (var pod in pods.Items)
+            {
+                var podNodeId = $"pod-{pod.Metadata.Uid}";
+                if (graph.Nodes.Any(n => n.Id == podNodeId)) continue;
+
+                podMetrics.TryGetValue(pod.Metadata.Name, out var orphanPodMetric);
+                AddPodNode(graph, pod, podNodeId, orphanPodMetric?.Cpu, orphanPodMetric?.Mem);
             }
 
             return graph;
@@ -187,8 +198,6 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
             var pods = matchingPods.ToList();
             if (!pods.Any()) return "Mismatch"; // Servicio huérfano
 
-            // "Allowed" exige Running Y que todos sus contenedores hayan pasado el readinessProbe;
-            // si no, aunque estén "Running", no deberían estar recibiendo tráfico real todavía.
             bool allRunningAndReady = pods.All(p =>
                 p.Status.Phase == "Running" &&
                 (p.Status.ContainerStatuses == null || p.Status.ContainerStatuses.All(c => c.Ready)));
@@ -214,6 +223,17 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
             var svcName = path.Backend?.Service?.Name;
             var targetSvc = services.FirstOrDefault(s => s.Metadata.Name == svcName);
 
+            if (targetSvc != null && !ServiceExposesPort(targetSvc, path.Backend?.Service?.Port))
+            {
+                var backendPort = path.Backend?.Service?.Port;
+                var portLabel = backendPort?.Number?.ToString() ?? backendPort?.Name ?? "?";
+                var errorNodeId = $"error-404-{svcName}-port-{portLabel}";
+
+                graph.Nodes.Add(new GraphNodeDTO { Id = errorNodeId, Type = ResourceTypeEnum.Error404, Label = $"Puerto {portLabel} No Encontrado en {svcName}", Status = "404 Error" });
+                graph.Edges.Add(new GraphEdgeDTO { SourceId = ingressId, TargetId = errorNodeId, Status = "404 Error" });
+                return;
+            }
+
             if (targetSvc != null)
             {
                 graph.Edges.Add(new GraphEdgeDTO
@@ -232,48 +252,158 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
             }
         }
 
+        private bool ServiceExposesPort(V1Service svc, V1ServiceBackendPort? backendPort)
+        {
+            if (backendPort == null) return true; // sin puerto declarado, no hay nada que validar
+
+            var ports = svc.Spec?.Ports;
+            if (ports == null || !ports.Any()) return false;
+
+            if (backendPort.Number.HasValue)
+            {
+                return ports.Any(p => p.Port == backendPort.Number.Value);
+            }
+
+            if (!string.IsNullOrEmpty(backendPort.Name))
+            {
+                return ports.Any(p => p.Name == backendPort.Name);
+            }
+
+            return true;
+        }
+
         private async Task EnrichTlsSecurity(GraphNodeDTO node, V1Ingress ingress, IKubernetes client, string namespaceName)
         {
-            var tlsSecretName = ingress.Spec.Tls?.FirstOrDefault()?.SecretName;
-            if (string.IsNullOrEmpty(tlsSecretName)) return;
+            var tlsBlocks = ingress.Spec.Tls;
+            if (tlsBlocks == null || !tlsBlocks.Any()) return;
 
+            node.Metadata ??= new GraphNodeMetadata();
+
+            string? worstStatus = null;
+            string? worstIssuer = null;
+            DateTime? worstExpiration = null;
+
+            foreach (var tlsBlock in tlsBlocks)
+            {
+                if (string.IsNullOrEmpty(tlsBlock.SecretName)) continue;
+
+                var (blockStatus, issuerText, expirationDate) = await EvaluateTlsBlock(tlsBlock, client, namespaceName);
+
+                if (worstStatus == null || TlsStatusSeverity(blockStatus) > TlsStatusSeverity(worstStatus))
+                {
+                    worstStatus = blockStatus;
+                    worstIssuer = issuerText;
+                    worstExpiration = expirationDate;
+                }
+            }
+
+            if (worstStatus != null)
+            {
+                node.Status = worstStatus;
+                node.Metadata.Issuer = worstIssuer;
+                node.Metadata.ExpirationDate = worstExpiration;
+            }
+        }
+
+        private int TlsStatusSeverity(string status) => status switch
+        {
+            "Incompatible" => 2,
+            "Expired" => 1,
+            _ => 0
+        };
+
+        private async Task<(string status, string? issuer, DateTime? expiration)> EvaluateTlsBlock(V1IngressTLS tlsBlock, IKubernetes client, string namespaceName)
+        {
             try
             {
-                node.Metadata ??= new GraphNodeMetadata();
+                var secret = await client.CoreV1.ReadNamespacedSecretAsync(tlsBlock.SecretName, namespaceName);
 
-                var secret = await client.CoreV1.ReadNamespacedSecretAsync(tlsSecretName, namespaceName);
-
-                if (secret.Data.TryGetValue("tls.crt", out byte[]? certData))
+                if (!secret.Data.TryGetValue("tls.crt", out byte[]? certData))
                 {
-                    try
+                    return ("Allowed", null, null);
+                }
+
+                try
+                {
+                    var cert = new X509Certificate2(certData);
+                    var fechaDeExpiracion = cert.NotAfter;
+
+                    if (fechaDeExpiracion < DateTime.UtcNow)
                     {
-                        var cert = new X509Certificate2(certData);
-                        var fechaDeExpiracion = cert.NotAfter;
-
-                        node.Metadata.Issuer = cert.Issuer;
-                        node.Metadata.ExpirationDate = fechaDeExpiracion;
-
-                        if (fechaDeExpiracion < DateTime.UtcNow)
-                        {
-                            node.Status = "Expired";
-                        }
-                        else
-                        {
-                            node.Status = "Allowed";
-                        }
+                        return ("Expired", cert.Issuer, fechaDeExpiracion);
                     }
-                    catch (Exception ex)
+
+                    var declaredHosts = tlsBlock.Hosts ?? new List<string>();
+                    var certHosts = ExtractCertHostnames(cert);
+
+                    bool hostMatches = declaredHosts.Count == 0 || certHosts.Count == 0 ||
+                        declaredHosts.Any(h => certHosts.Any(ch => HostnamePatternMatches(ch, h)));
+
+                    if (!hostMatches)
                     {
-                        node.Status = "Incompatible";
-                        node.Metadata.Issuer = "Error: Formato no soportado";
+                        return ("Incompatible", $"Certificado no cubre el host declarado ({string.Join(", ", declaredHosts)}); cubre: {string.Join(", ", certHosts)}", fechaDeExpiracion);
+                    }
+
+                    return ("Allowed", cert.Issuer, fechaDeExpiracion);
+                }
+                catch (Exception)
+                {
+                    return ("Incompatible", "Error: Formato no soportado", null);
+                }
+            }
+            catch (Exception)
+            {
+                return ("Incompatible", "Error: Sin acceso a Secretos", null);
+            }
+        }
+
+        private List<string> ExtractCertHostnames(X509Certificate2 cert)
+        {
+            var hosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var sanExtension = cert.Extensions["2.5.29.17"];
+            if (sanExtension != null)
+            {
+                var formatted = sanExtension.Format(false);
+                foreach (var part in formatted.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var trimmed = part.Trim();
+                    var idx = trimmed.IndexOf('=');
+                    if (idx < 0) continue;
+
+                    var key = trimmed.Substring(0, idx).Trim();
+                    var value = trimmed.Substring(idx + 1).Trim();
+                    if (key.Contains("DNS", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(value))
+                    {
+                        hosts.Add(value);
                     }
                 }
             }
-            catch (Exception ex)
+
+            if (hosts.Count == 0)
             {
-                node.Status = "Incompatible";
-                node.Metadata.Issuer = "Error: Sin acceso a Secretos";
+                var cn = cert.GetNameInfo(X509NameType.DnsName, false);
+                if (!string.IsNullOrEmpty(cn)) hosts.Add(cn);
             }
+
+            return hosts.ToList();
+        }
+
+        private bool HostnamePatternMatches(string certPattern, string requestedHost)
+        {
+            if (string.Equals(certPattern, requestedHost, StringComparison.OrdinalIgnoreCase)) return true;
+
+            if (certPattern.StartsWith("*."))
+            {
+                var suffix = certPattern.Substring(1); // ".example.com"
+                if (requestedHost.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    var prefix = requestedHost.Substring(0, requestedHost.Length - suffix.Length);
+                    return prefix.Length > 0 && !prefix.Contains('.');
+                }
+            }
+
+            return false;
         }
 
         private GraphNodeDTO BuildIngressNode(V1Ingress ingress)
