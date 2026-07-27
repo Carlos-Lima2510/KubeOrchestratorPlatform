@@ -152,6 +152,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
             {
                 "Running" => "Allowed",
                 "Pending" => "Degraded",
+                "Succeeded" => "Allowed",
                 "Failed" => "Broken",
                 _ => "Broken"
             };
@@ -167,7 +168,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
                     }
                 }
 
-                if (status == "Allowed" && pod.Status.ContainerStatuses.Any(c => !c.Ready))
+                if (status == "Allowed" && pod.Status.Phase != "Succeeded" && pod.Status.ContainerStatuses.Any(c => !c.Ready))
                 {
                     status = "Degraded";
                 }
@@ -395,7 +396,7 @@ namespace Servidor.KubeOrchestratorPlatform.Services.Graph
 
             if (certPattern.StartsWith("*."))
             {
-                var suffix = certPattern.Substring(1); // ".example.com"
+                var suffix = certPattern.Substring(1);
                 if (requestedHost.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
                 {
                     var prefix = requestedHost.Substring(0, requestedHost.Length - suffix.Length);
